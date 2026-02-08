@@ -10,6 +10,7 @@
 \usepackage{amsmath,amsthm,amssymb}
 \usepackage{amsfonts}
 \usepackage{graphicx}
+\usepackage{subcaption}
 \usepackage{float}
 \usepackage{xcolor}
 \usepackage{array}
@@ -152,16 +153,21 @@ Tài liệu này là bản mẫu về định dạng cho các bài báo xuất b
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.6\linewidth]{images/hinh_1.png}
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/hinh_1.png}
+    \caption{}
+    \label{fig:hinh1_a}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/hinh_2.png}
+    \caption{}
+    \label{fig:hinh2_b}
+  \end{subfigure}
   \caption{}
-  \label{fig:hinh2}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.6\linewidth]{images/hinh_2.png}
-  \caption{}
-  \label{fig:hinh2}
+  \label{fig:nhom2}
 \end{figure}
 
 \textbf{Hình 1. }\textit{Thông số định dạng cho (a): văn bản nội dung, (b): tiêu đề các phần}
@@ -252,16 +258,21 @@ Nếu một hình bao gồm nhiều hình nhỏ, ký hiệu các hình nhỏ b�
 
 \begin{figure}[H]
   \centering
-  \includegraphics[width=0.6\linewidth]{images/hinh_3.png}
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/hinh_3.png}
+    \caption{}
+    \label{fig:hinh3_a}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.45\textwidth}
+    \centering
+    \includegraphics[width=\linewidth]{images/hinh_4.png}
+    \caption{}
+    \label{fig:hinh4_b}
+  \end{subfigure}
   \caption{}
-  \label{fig:hinh4}
-\end{figure}
-
-\begin{figure}[H]
-  \centering
-  \includegraphics[width=0.6\linewidth]{images/hinh_4.png}
-  \caption{}
-  \label{fig:hinh4}
+  \label{fig:nhom4}
 \end{figure}
 
 Số hiệu và tiêu đề của hình để bên dưới hình. Số hiệu và tiêu đề của bảng nằm bên trên bảng. Chèn một dòng trắng vào bên trên hình và dưới tiêu đề của hình để ngăn cách với các phần văn bản phía trước và sau mỗi hình.

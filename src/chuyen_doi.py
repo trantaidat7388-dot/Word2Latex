@@ -57,6 +57,9 @@ class ChuyenDoiWordSangLatex:
         self.tong_so_phan_tu = 0
         self.toc_da_sinh = False
         self.kich_thuoc_anh_da_xem = []
+        self.danh_sach_phan_tu = []
+        # Tap hop chi muc cac doan van da dung lam caption con (bo qua khi duyet)
+        self.cac_doan_da_dung = set()
 
         # Khởi tạo bộ xử lý toán (XSLT / Pandoc / parser thủ công)
         duong_dan_xslt = duong_dan_xslt_omml or DEFAULT_OMML2MML_XSL
@@ -341,6 +344,62 @@ class ChuyenDoiWordSangLatex:
         latex += rf"  \label{{{label}}}" + "\n"
         latex += r"\end{figure}" + "\n\n"
         return latex
+
+    def tao_latex_nhom_hinh(self, danh_sach_anh: list, danh_sach_caption: list = None) -> str:
+        # Gom nhieu anh thanh 1 figure voi subfigure nam ngang
+        if not danh_sach_anh:
+            return ""
+        ten_thu_muc = os.path.basename(self.thu_muc_anh)
+        vi_tri = "[H]" if self.mode == 'demo' else "[htbp]"
+        so_anh = len(danh_sach_anh)
+        # Tinh do rong moi subfigure (tru khoang cach hfill)
+        do_rong = f"{0.9 / so_anh:.2f}" if so_anh > 1 else "0.48"
+
+        latex = rf"\begin{{figure}}{vi_tri}" + "\n"
+        latex += r"  \centering" + "\n"
+
+        for i, ten_anh in enumerate(danh_sach_anh):
+            # Lay phan mo ta (bo nhan (a),(b) vi subcaption tu sinh)
+            mo_ta = ""
+            if danh_sach_caption and i < len(danh_sach_caption):
+                # Loai bo phan "(a)" dau chuoi, chi giu mo ta
+                mo_ta = re.sub(r'^\([a-z]\)\s*', '', danh_sach_caption[i]).strip()
+            nhan = chr(ord('a') + i)
+
+            latex += rf"  \begin{{subfigure}}[b]{{{do_rong}\textwidth}}" + "\n"
+            latex += r"    \centering" + "\n"
+            latex += rf"    \includegraphics[width=\linewidth]{{{ten_thu_muc}/{ten_anh}}}" + "\n"
+            latex += rf"    \caption{{{mo_ta}}}" + "\n"
+            latex += rf"    \label{{fig:hinh{self.dem_anh - so_anh + i + 1}_{nhan}}}" + "\n"
+            latex += r"  \end{subfigure}" + "\n"
+            if i < so_anh - 1:
+                latex += r"  \hfill" + "\n"
+
+        latex += r"  \caption{}" + "\n"
+        latex += rf"  \label{{fig:nhom{self.dem_anh}}}" + "\n"
+        latex += r"\end{figure}" + "\n\n"
+        return latex
+
+    def trich_xuat_caption_con(self) -> list:
+        # Tim caption con (a), (b)... tu doan van ngay phia duoi
+        danh_sach = []
+        try:
+            vi_tri_ke = self.vi_tri_hien_tai + 1
+            if vi_tri_ke < len(self.danh_sach_phan_tu):
+                loai_ke, phan_tu_ke = self.danh_sach_phan_tu[vi_tri_ke]
+                if loai_ke == 'paragraph':
+                    text_ke = phan_tu_ke.text.strip()
+                    # Nhan dien pattern (a) mo ta, (b) mo ta...
+                    ket_qua = re.findall(r'\(([a-z])\)\s*([^(]*)', text_ke)
+                    if ket_qua:
+                        for nhan, mo_ta in ket_qua:
+                            caption = f"({nhan})"
+                            if mo_ta.strip():
+                                caption += f" {mo_ta.strip()}"
+                            danh_sach.append(caption)
+        except Exception:
+            pass
+        return danh_sach
 
     def trich_xuat_anh_tu_bang(self, bang: Table) -> list:
         # Trích xuất ảnh từ bảng (figure layout), luôn giữ ảnh
@@ -761,14 +820,16 @@ class ChuyenDoiWordSangLatex:
                 return r"\tableofcontents" + "\n\\newpage\n\n"
             return ""
 
-        # Bước 4: bảng chứa ảnh → figure
+        # Bước 4: bảng chứa ảnh -> figure (subfigure neu nhieu anh)
         if self.la_bang_chua_anh(bang):
             danh_sach_anh = self.trich_xuat_anh_tu_bang(bang)
             if danh_sach_anh:
-                latex = ""
-                for ten_anh in danh_sach_anh:
-                    latex += self.tao_latex_hinh(ten_anh)
-                return latex
+                if len(danh_sach_anh) > 1:
+                    # Tim caption con tu cac cell text ngan trong bang
+                    caption_con = self._tim_caption_con_trong_bang(bang)
+                    return self.tao_latex_nhom_hinh(danh_sach_anh, caption_con)
+                else:
+                    return self.tao_latex_hinh(danh_sach_anh[0])
 
         # Bước 5: bảng dữ liệu thường → tabular
         self.so_bang_noi_dung += 1
@@ -852,8 +913,16 @@ class ChuyenDoiWordSangLatex:
         numId, ilvl = self.lay_thong_tin_danh_sach(doan_van)
 
         ket_qua = ""
-        for ten_anh in danh_sach_anh:
-            ket_qua += self.tao_latex_hinh(ten_anh)
+        # Nhieu anh trong 1 doan -> gom thanh subfigure
+        if len(danh_sach_anh) > 1:
+            caption_con = self.trich_xuat_caption_con()
+            if caption_con:
+                # Danh dau doan caption con da dung, khong xuat lai
+                self.cac_doan_da_dung.add(self.vi_tri_hien_tai + 1)
+            ket_qua += self.tao_latex_nhom_hinh(danh_sach_anh, caption_con)
+        else:
+            for ten_anh in danh_sach_anh:
+                ket_qua += self.tao_latex_hinh(ten_anh)
 
         # Xử lý danh sách
         if numId is not None:
@@ -926,15 +995,40 @@ class ChuyenDoiWordSangLatex:
                 thu_tu.append(('table', Table(phan_tu, self.tai_lieu)))
         return thu_tu
 
+    def _tim_caption_con_trong_bang(self, bang: Table) -> list:
+        # Tim text caption con (a), (b)... trong cac cell cua bang
+        danh_sach = []
+        try:
+            for hang in bang.rows:
+                for cell in hang.cells:
+                    text = cell.text.strip()
+                    # Cell chi chua label ngan dang (a), (b)...
+                    match = re.match(r'^\(([a-z])\)(.*)$', text)
+                    if match:
+                        nhan = match.group(1)
+                        mo_ta = match.group(2).strip()
+                        caption = f"({nhan})"
+                        if mo_ta:
+                            caption += f" {mo_ta}"
+                        danh_sach.append(caption)
+        except Exception:
+            pass
+        return danh_sach
+
     def sinh_noi_dung(self) -> str:
         # Duyệt toàn bộ phần tử và sinh nội dung LaTeX
         self.doc_file_word()
         noi_dung = []
         thu_tu_phan_tu = self.lay_thu_tu_phan_tu()
         self.tong_so_phan_tu = len(thu_tu_phan_tu)
+        # Luu danh sach de cac ham khac co the nhin truoc/sau
+        self.danh_sach_phan_tu = thu_tu_phan_tu
 
         for idx, (loai, phan_tu) in enumerate(thu_tu_phan_tu):
             self.vi_tri_hien_tai = idx
+            # Bo qua doan van da dung lam caption con cho subfigure
+            if idx in self.cac_doan_da_dung:
+                continue
             if loai == 'paragraph':
                 ket_qua = self.xu_ly_doan_van(phan_tu)
                 if ket_qua:
