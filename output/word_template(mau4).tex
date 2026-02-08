@@ -1,0 +1,348 @@
+% Mẫu XeLaTeX (Một cột)
+% Hỗ trợ Unicode và font hệ thống qua fontspec; tiếng Việt xử lý bởi polyglossia
+% Bố cục bài báo khoa học một cột chuẩn (authblk, abstract, natbib)
+\documentclass[11pt,a4paper]{article}
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+\usepackage{polyglossia}
+\setdefaultlanguage{vietnamese}
+\setotherlanguage{english}
+\usepackage{amsmath,amsthm,amssymb}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{authblk}
+\usepackage{abstract}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{setspace}
+\usepackage{indentfirst}
+\usepackage[left=3cm,right=2cm,top=2.5cm,bottom=2.5cm]{geometry}
+
+\usepackage[numbers,sort&compress]{natbib}
+\bibliographystyle{plain}
+
+\definecolor{linkcolor}{RGB}{0,0,139}
+\definecolor{citecolor}{RGB}{0,100,139}
+\definecolor{urlcolor}{RGB}{0,100,0}
+
+\usepackage[colorlinks=true,linkcolor=linkcolor,citecolor=citecolor,urlcolor=urlcolor,bookmarks=true,bookmarksnumbered=true,pdfstartview=FitH]{hyperref}
+
+\usepackage[labelfont=bf,textfont=it,justification=justified,font=small]{caption}
+\captionsetup[table]{skip=3pt,position=top}
+\captionsetup[figure]{skip=3pt,position=bottom}
+
+\newcommand{\hl}[2]{\colorbox{#1}{#2}}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{note}[theorem]{Note}
+
+\titleformat{\section}{\normalfont\large\bfseries}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\normalfont\normalsize\itshape}{\thesubsubsection.}{0.5em}{}
+
+\setlength{\parindent}{1cm}
+\setlength{\parskip}{6pt}
+\onehalfspacing
+
+\setlist[itemize]{nosep,leftmargin=*,topsep=3pt,itemsep=3pt}
+\setlist[enumerate]{nosep,leftmargin=*,topsep=3pt,itemsep=3pt}
+
+\renewcommand{\abstractnamefont}{\normalfont\bfseries}
+\renewcommand{\abstracttextfont}{\normalfont\small}
+\setlength{\absleftindent}{1cm}
+\setlength{\absrightindent}{1cm}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\leftmark}
+\fancyhead[R]{\small\rightmark}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\begin{document}
+
+\textbf{ARTICLE }\textbf{TITLE }\textbf{IN ENGLISH; }\textbf{BE CONCISE, SPECIFIC }\textbf{A}\textbf{ND RELEVANT}\textbf{;}\textbf{ CAPITAL}\textbf{IZED}\textbf{, BOLD, TIMES NEW ROMAN, SIZE 12}\textbf{; NOT EXCEED 20 WORDS}
+
+\textbf{Full }\textbf{N}\textbf{ame of }\textbf{A}\textbf{uthor 1}\textbf{1}\textbf{*}\textbf{, }\textbf{Full }\textbf{N}\textbf{ame of }\textbf{A}\textbf{uthor 2}\textbf{2}\textbf{*}\textbf{, }\textbf{Full }\textbf{N}\textbf{ame of }\textbf{A}\textbf{uthor }\textbf{3}\textbf{3}\textbf{†}
+
+\textit{1}\textit{Affiliation for }\textit{A}\textit{uthor 1}
+
+\textit{2}\textit{ Affiliation for }\textit{A}\textit{uthor 2}
+
+\textit{3}\textit{ Affiliation for }\textit{A}\textit{uthor }\textit{3}
+
+\textit{*}\textit{ authors have contributed equally}
+
+\textit{…}
+
+\textbf{ABSTRACT}\textbf{ (}\textcolor[rgb]{1.000,0.000,0.000}{\textbf{cung cấp Tóm tắt bằng Tiếng Anh}}\textbf{)}
+
+\textbf{ARTICLE INFORMATION}
+
+The abstract is written in one paragraph, between 150 and 200 words in length, without abbreviations, footnotes, or references. The abstract should provide information in a succinct, factual, and straight-to-the-point manner. The summary should include the following four points: 1) Research question and objective 2) Research method: It is necessary to describe how to solve the problem (theory/method development, data processing, etc.) 3) Results: Summarize the main findings of the study, including any data that could be considered essential to the study. 4) Conclusion: One or two sentences concluding the meaning and application orientation of the research results. The abstract is required to be presented in both Vietnamese and English.
+
+\textit{\textbf{Journal:}}\textit{ Vinh University Journal of Sciences}
+
+\textit{\textbf{ISSN: }}\textit{1859-2228}
+
+\textit{\textbf{Volume:}}\textit{\textbf{ }}\textit{\textbf{XX}}\textit{ }
+
+\textit{\textbf{Issue:}}\textit{\textbf{ }}\textit{\textbf{Y}}
+
+\textit{\textbf{*Co}}\textit{\textbf{r}}\textit{\textbf{respond}}\textit{\textbf{e}}\textit{\textbf{nce:}}
+
+\textit{Firstname}\textit{ L}\textit{.}
+
+\textit{abc@xyz.com}\textit{ }
+
+\textit{\textbf{Keywords:}}\textit{ keyword 1, keywoed 2, keyword 3, keywoed 4, keyword 5}
+
+\textit{\textbf{Re}}\textit{\textbf{ceiv}}\textit{\textbf{ed:}}\textit{ 0}\textit{2}\textit{ }\textit{March}\textit{ 202}\textit{4}
+
+\textit{\textbf{Accepted:}}\textit{\textbf{ }}\textit{0}\textit{8}\textit{ }\textit{Avril}\textit{ 202}\textit{4}
+
+\textit{\textbf{Published:}} \textit{12 }\textit{July}\textit{ 202}\textit{4}
+
+\textit{\textbf{doi: }}\textit{10.56824/vujs.202}\textit{4}\textit{nt}\textit{40}
+
+\textbf{TÓM TẮT}\textbf{ }\textbf{(}\textcolor[rgb]{1.000,0.000,0.000}{\textbf{cung cấp Tóm tắt bằng Tiếng Việt}}\textbf{)}
+
+Phần tóm tắt trình bày thành một đoạn văn, độ dài nằm trong khoảng 150-250 từ, không viết tắt, không chèn chú thích và tham chiếu tài liệu tham khảo (Nếu cần trích dẫn nguồn, ghi tên tác giả và năm ở trong ngoặc đơn). Nội dung tóm tắt cần bao gồm bốn ý sau: 1) Câu hỏi và mục đích của nghiên cứu. 2) Phương pháp nghiên cứu. Cần mô tả cách thức giải quyết vấn đề (phát triển lý thuyết/ phương pháp thu thập, xử lý dữ liệu…); 3) Kết quả. Tóm tắt những kết quả chính của nghiên cứu, kể cả những số liệu có thể lấy làm điểm thiết yếu của nghiên cứu. 4) Kết luận. Một hoặc 2 câu văn kết luận và ý nghĩa của kết quả nghiên cứu. Nội dung tóm tắt cần cung cấp thông tin một cách ngắn gọn, nhưng có dữ liệu minh chứng và đi thẳng vào vấn đề. 
+
+\textcolor[rgb]{1.000,0.000,0.000}{Lưu ý:}\textcolor[rgb]{1.000,0.000,0.000}{ }\textcolor[rgb]{1.000,0.000,0.000}{t}\textcolor[rgb]{1.000,0.000,0.000}{rong tóm tắt nên }\textcolor[rgb]{1.000,0.000,0.000}{hạn chế gõ công thức được định dạng, }\textcolor[rgb]{1.000,0.000,0.000}{một công thức được định dạng như vậy }\textcolor[rgb]{1.000,0.000,0.000}{sẽ không hiển thị đúng trên trang web.}
+
+\textit{\textbf{Từ khóa:}}\textit{ từ khoá 1, từ khoá 2, từ khoá 3, từ khoá 4, từ khoá 5}
+
+\textit{ (Cung cấp 3-5 từ khóa}\textit{:}\textit{từ khoá cần }\textit{thể hiện }\textit{ngắn gọn}\textit{ sử dụng các từ phổ biến cho ngành, lĩnh vực}\textit{ và các từ}\textit{ đặc trưng}\textit{ cho đối tượng nghiên cứu}\textit{. }\textit{Lưu ý viết }\textit{bằng }\textit{chữ thường, trừ những từ viết tắt phổ biến và các tên riêng}\textit{).}
+
+\textcolor[rgb]{1.000,0.000,0.000}{Lưu ý: Tác giả không nhập hoặc thay đổi thông tin ở cột bên trái}
+
+\textit{\textbf{Citation:}}
+
+\textit{First A}\textit{, }\textit{Second }\textit{C}\textit{-}\textit{A}\textit{, Th}\textit{ird}\textit{ }\textit{C A}\textit{, and }\textit{Coresponding A}\textit{ (2022)} \textit{Article Title In English Be Concise Specific And Relevant Capital Bold Times New Roman Size 12 Not Exceed 20 Words.}\textit{\textbf{Vinh Uni. Jour.}}\textit{\textbf{ }}\textit{\textbf{Sci..}}\textit{ Vol 52 (}\textit{\textbf{1}}\textit{), pp. 16-27.}\textit{ }\textit{doi: }\textit{10.56824/vujs.2024nt40}
+
+\textbf{OPEN ACCESS}
+
+\textit{Copyright © 2022. This is an Open Access article distributed under the terms of the }\textit{ (CC BY NC), which permits non-commercially to share (copy and redistribute the material in any medium) or adapt (remix, transform, and build upon the material), provided the original work is properly cited.}
+
+\section*{1. Giới thiệu (Introduction)}
+
+Tài liệu này là bản mẫu về định dạng cho các bài báo xuất bản bởi Tạp chí Khoa học Trường Đại học Vinh. Các yêu cầu cụ thể về định dạng, cấu trúc bài báo cũng được trình bày trong từng phần. 
+
+\textbf{Nếu bản thảo được soạn thảo bằng LaT}\textbf{e}\textbf{X}, tác giả cần định dạng để sau khi xuất ra định dạng PDF. Bài báo phải được trình bày trên khổ A4 theo chiều dọc, dạng một cột với các thông số PageSetup cụ thể như sau: Top: 3,1cm, Bottom: 3,1cm, Left: 3,0 cm, Right: 2,8 cm, Header: 2,85cm, Footer: 2,85cm. Nội dung bài báo gõ bằng font chữ Times New Roman, cỡ 11, không dãn hay co cỡ chữ; chế độ dãn dòng: Single, khoảng trống dòng: before: 0, after: 0; căn lề justified. Khoảng thụt đầu dòng của đoạn văn là 0,5 cm. Tiêu đề các phần không thụt đầu dòng. Khoảng trống dòng của tiêu đề: before 6, after 6. \textbf{Hình 1} mô tả thông số định dạng dãn dòng cho văn bản nội dung bài báo và thông số cho các tiêu đề.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\linewidth]{images/hinh_1.png}
+  \caption{}
+  \label{fig:hinh2}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\linewidth]{images/hinh_2.png}
+  \caption{}
+  \label{fig:hinh2}
+\end{figure}
+
+\textbf{Hình 1. }\textit{Thông số định dạng cho (a): văn bản nội dung, (b): tiêu đề các phần}
+
+Dung lượng mỗi bài báo \textbf{không quá }\textbf{mười}\textbf{ (}\textbf{10}\textbf{) trang}, trừ những bài báo review (Review Article) –Ban biên tập xem xét cụ thể độ dài của bài báo dạng này.
+
+Bài báo cần được viết theo cấu trúc IMRAD (Introduction – Methods/Materials – Results – And Discussion. Cấu trúc IMRAD là một cấu trúc đặc thù, phổ biến trong cộng đồng khoa học quốc tế. Tiêu đề các phần chính của bài báo (Tiêu đề cấp 1) dùng chữ in đậm, cùng cỡ chữ (11 pt) với cỡ chữ của nội dung bài báo. Tiêu đề cấp 2 dùng chữ in đậm, nghiêng. Tiêu đề cấp 3 dùng chữ in nghiêng. Ví dụ định dạng tiêu đề các cấp như sau:
+
+\textbf{1. Tiêu đề cấp 1}
+
+\subsection*{\textit{\textbf{1.1. Tiêu đề cấp 2}}}
+
+\subsubsection*{\textit{1.1.1. Tiêu đề cấp 3}}
+
+\subsubsection*{\textit{1.1.2. Tiêu đề cấp 3}}
+
+\subsection*{\textit{\textbf{1.2. Tiêu đề cấp 2}}}
+
+\textit{...}
+
+\textbf{2. Tiêu đề cấp 1}
+
+\textcolor[rgb]{1.000,0.000,0.000}{\textbf{Lưu ý:}}\textcolor[rgb]{1.000,0.000,0.000}{ Không sử dụng chế độ đánh số tự động. }\textcolor[rgb]{1.000,0.000,0.000}{Không dùng tiêu đề quá cấp 3.}
+
+Nội dung phần \textbf{Giới thiệu} cần cung cấp những thông tin sau: Tóm tắt tổng quan về tình hình nghiên cứu về lĩnh vực, đối tượng mà bài báo nhắm tới, làm nổi bật tính thời sự, cấp thiết của vấn đề nghiên cứu của bài báo. Thông thường phần giới thiệu của bài báo được giới hạn không quá 350 từ, gồm 1-3 đoạn văn, 5-7 tài liệu tham khảo.
+
+Nên cấu trúc phần \textbf{Giới thiệu} như sau:
+
+Trước hết, cung cấp thông tin ngắn gọn về hoàn cảnh đặt ra vấn đề cần nghiên cứu. Nếu cần, sử dụng 1-2 câu văn tóm tắt kiến thức cơ bản có liên quan trực tiếp đến vấn đề nghiên cứu. Phát biểu vấn đề nghiên cứu một cách cụ thể, súc tích. Thứ hai, thông qua việc tóm tắt các kết quả nghiên cứu liên quan đã được công bố gần nhất, chỉ ra khoảng trống về kiến thức cần bổ sung để hoàn thiện lời giải cho vấn đề nghiên cứu. Các kết quả nghiên cứu liên quan đến vấn đề nghiên cứu \textbf{nhất thiết phải kèm theo trích dẫn, tham chiếu đến tài liệu tham khảo}. Số lượng trích dẫn trong phần giới thiệu không giới hạn tối đa, nhưng để không quá rườm ra tác giả nên giới hạn \textbf{từ}\textbf{ }\textbf{5 đến 7 tài liệu}, và bao gồm có ít nhất 5 bài báo khoa học công bố gần nhất. Nếu quá ít trích dẫn, có thể được hiểu rằng hoặc vấn đề ít quan trọng nên ít người quan tâm, hoặc tác giả không chịu tìm hiểu vấn đề đã được quan tâm giải quyết thế nào, khoảng trống kiến thức khoa học cần bổ sung là gì. Nên trích dẫn các công bố khoa học trên các tạp chí uy tín. Riêng bài báo tổng quan, cần đảm bảo có ít nhất 15 tài liệu tham khảo là các bài báo khoa học. Trong lộ trình nâng cao chất lượng Tạp chí Khoa học Trường Đại học Vinh theo chuẩn quốc tế, tác giả cần \textcolor[rgb]{1.000,0.000,0.000}{ưu tiên trích dẫn các bài báo đã đăng trên các tạp chí trong danh mục ISI, Scopus}\textcolor[rgb]{1.000,0.000,0.000}{, ACI}\textcolor[rgb]{1.000,0.000,0.000}{ và bài báo đã đăng trên Tạp chí Khoa học Trường Đại học Vinh}. Thông tin dùng cho trích dẫn (Metadata – siêu dữ liệu) của mỗi bài báo đã đăng trên Tạp chí Khoa học Trường Đại học Vinh có thể dễ dàng download từ trang web của Tạp chí. Nếu trích dẫn từ các tạp chí trong nước, cần chỉ rõ tên đơn vị chủ quản của Tạp chí để người đọc tìm được nguồn tài liệu khi cần. Do nhiều tạp chí trong nước cùng có tên “Tạp chí Khoa học”, nên có thể gây khó khăn cho người đọc khi cần tham chiếu nguồn tài liệu tham khảo của bài báo. Lưu ý tên tiếng Anh chính thức của Tạp chí Khoa học Trường Đại học Vinh là “Vinh University Journal of Science”, tên viết tắt chính thức là VUJS.
+
+Khi trích dẫn, không nên tham chiếu đến sách giáo khoa, giáo trình, luận văn cao học. Chỉ khi nhất thiết phải sử dụng kiến thức/ công thức cơ sở trong các sách giáo trình để phát triển lý thuyết hay áp dụng cho tính toán thiết kế trong nghiên cứu thì mới trích dẫn từ các tài liệu tham khảo là sách giáo trình. 
+
+Tiếp theo, nên mô tả ngắn gọn cách thức và kết quả thu được để giải quyết vấn đề đã nêu. 
+
+Cuối phần \textbf{Giới thiệu}, nên mô tả tóm tắt nội dung các phần tiếp theo của bài báo để người đọc tiện theo dõi.
+
+\section*{2. Phương pháp nghiên cứu (Tools \& Methods)}
+
+Mô tả về phương pháp tiến hành nghiên cứu và các phương tiện nghiên cứu như máy móc, thiết bị, thang đo, định cỡ, hiệu chỉnh và chuẩn hóa thang đo v.v. Phần này cần được viết ngắn ngọn nhưng cần đảm bảo tính đầy đủ thông tin, rõ ràng và cho phép lặp lại được ở nơi khác phục vụ cho các nghiên cứu tiếp theo. Cần cung cấp đầy đủ thông tin như tên, độ tinh khiết, tình trạng của nguyên, vật liệu, mẫu vật liệu, mẫu sinh – hóa học sử dụng trong nghiên cứu và nêu rõ tên cơ quan, đại lý, nhà phân phối cung cấp các nguyên, vật liệu đó. Đối với các nghiên cứu trên các mẫu là con người hoặc các loại động vật sống khác cần có xác nhận về việc nghiên cứu đã được thực hiện dưới sự cho phép hoặc hướng dẫn của các cơ quan hữu quan, cá nhân có liên quan, đồng thời tuân thủ các quy định của pháp luật của quốc gia hoặc các quy định của địa phương. Nêu rõ ràng các biện pháp phòng ngừa các nguy cơ có thể gây 3 nguy hiểm đối với người lặp lại thí nghiệm, những rủi ro có thể gặp phải khi thực hiện lại quy trình nghiên cứu. Các quy trình thử nghiệm mới, lạ phải được mô tả chi tiết, nhưng các quy trình đã quen thuộc hoặc đã xuất bản trong một công trình khác có thể được đề cập đến bằng cách trích dẫn tài liệu tham chiếu tới bài báo gốc và bất kỳ quy trình sửa đổi nào có liên quan. Thông thường phần phương pháp và phương tiện nghiên cứu được giới hạn không quá 450 từ, gồm 2-4 đoạn văn, 5-10 tài liệu tham khảo.
+
+Phần này mô tả chi tiết cách tiếp cận để tìm lời giải cho vấn đề nghiên cứu. Cách tiếp cận có thể là phát triển lý thuyết, nghiên cứu thực nghiệm, điều tra khảo sát v.v... Nên giải thích ưu việt của việc áp dụng cách tiếp cận được sử dụng. Nếu có thể, nên đánh giá so sánh với các nghiên cứu trước (nếu có). 
+
+Nếu nghiên cứu phát triển lý thuyết, cần trình bày cơ sở lý luận để tìm lời giải cho vấn đề nghiên cứu.
+
+\textcolor[rgb]{0.000,0.000,0.000}{Nếu nghiên cứu sử dụng phương pháp thực nghiệm hay mô phỏng, cần mô tả chi tiết thiết bị/ công cụ (nếu có), kế hoạch triển khai, cách thức thu thập và phân tích số liệu. Phần mô tả cần chi tiết và đầy đủ thông tin sao cho một nhà nghiên cứu khác có thể tiến hành lại được thí nghiệm đã trình bày.}
+
+\section*{3. Kết quả và thảo luận (Results and Discussion)}
+
+Phần này trình bày cô đọng kết quả nghiên cứu và giải thích ý nghĩa khoa học của kết quả nghiên cứu, đồng thời hấn mạnh các đóng góp mới của nghiên cứu so với các nghiên cứu tương tự đã công bố. Chỉ dùng các công thức, bảng, biểu, đồ thị, hoạt hình, các bảng đối sánh v.v. nếu cần thiết cho việc hiểu dữ liệu. Cần có các chú thích về hình vẽ (khái niệm hình vẽ dùng để chỉ dữ liệu dưới dạng đồ họa bao gồm tranh, ảnh, đồ thị, sơ đồ), bảng, biểu, các từ ngữ viết tắt; giải thích rõ nội hàm của các định nghĩa nếu định nghĩa đó chỉ có giá trị trong phạm vi bài báo. Không được biểu diễn cùng một dữ liệu trên nhiều hình vẽ hoặc nhiều bảng, biểu theo cùng một cách. Các ký hiệu phải rõ ràng, công thức phải chính xác và được đánh số; biểu, bảng, hình ảnh phải được ghi số thứ tự và chú thích, và phải được bố trí gần đoạn văn mà bảng, biểu, hình vẽ được nhắc tới. Mục đích của phần này là nhằm cung cấp các căn cứ khoa học thuyết phục để đưa đến kết luận khoa học vững chắc. Thông thường phần kết quả và luận giải được giới hạn không quá 1800 từ, gồm 7-10 đoạn văn, 10-15 tài liệu tham khảo.
+
+Nếu cần thiết, có thể chia nội dung một phần của bài báo thành nhiều phần nhỏ. Khi này, có thể cung thông tin giới thiệu nội dung các phần nhỏ giữa tiêu đề của phần chính với tiêu đề của phần nhỏ đầu tiên. 
+
+Tiêu đề các phần nhỏ (Tiêu đề cấp 2) thống nhất dùng chữ in nghiêng đậm, cỡ 11 như dưới đây.
+
+\subsection*{3.1.Chữ viết tắt}
+
+Những thuật ngữ dài, được sử dụng nhiều lần có thể sử dụng chữ viết tắt. Thuật ngữ này cần được hiển thị đầy đủ ở lần đầu tiên xuất hiện trong bài viết, kèm theo ký hiệu viết tắt đặt trong ngoặc đơn. Ví dụ: "Các định hướng phát triển khoa học công nghệ (KHCN) đã đóng vai trò...".
+
+\subsection*{3.2. Các lưu ý định dạng và trình bày}
+
+\subsubsection*{3.2.1. Đơn vị đo và số liệu}
+
+Thống nhất dùng đơn vị đo theo hệ SI cho các số liệu trong bài báo. Định dạng in nghiêng cho ký hiệu các đại lượng tính toán. Số thập phân trình bày trong bài báo tiếng Việt để dấu ","; trong bài báo tiếng Anh để dấu "."
+
+\subsubsection*{3.2.2. Công thức toán}
+
+Các công thức tính toán được đánh số thứ tự, đặt trong ngoặc đơn phía lề phải như minh họa bằng các công thức (1) và (2) dưới đây. Lưu ý là các ký hiệu hàm, biến được in nghiêng; ký hiệu ma trận, véc tơ được in đậm. 
+
+\begin{equation}
+  f(x)=\int_{a}^{b} \sqrt[k]{5x-9}\, dx
+  \tag{1}
+\end{equation}
+
+\begin{equation}
+  \boldsymbol{T}=\begin{bmatrix} 1 & 0 & 255 \\ 0 & 1 & 0 \\ 0 & 0 & 1 \end{bmatrix}
+  \tag{2}
+\end{equation}
+
+\subsubsection*{3.2.3. Hình ảnh, bảng biểu}
+
+Các hình ảnh (đồ thị, sơ đồ, ảnh chụp...), bảng biểu nhất thiết phải có số hiệu và tiêu đề. Số hiệu đánh theo thứ tự tăng dần của bài báo, ví dụ Hình 1, Hình 2; bảng 1, bảng 2... Số hiệu hình vẽ, bảng biểu phải được tham chiếu (giới thiệu, bình luận) trong văn bản. Khi biên tập, để phù hợp với format của trang báo, Tòa soạn có thể di chuyển vị trí của bảng biểu, hình vẽ lên đầu trang hoặc xuống cuối trang; Do đó, đề nghị tác giả không sử dụng cách giới thiệu tương tự như: "... được minh họa trong hình sau:", hay "Số liệu thống kê như trong bảng sau:". Cần tham chiếu đến số hiệu của hình, bảng, chẳng hạn như "... được minh họa trong Hình 1", hay "Số liệu thống kê như trong bảng 2".
+
+Số liệu trong bảng phải chính xác, hình ảnh rõ nét. Độ rộng của bảng và hình vẽ bằng độ rộng của cột, hoặc của trang giấy theo khổ dọc. Nếu bảng và hình vẽ quá lớn có thể trình bày theo trang ngang (Landscape).
+
+Cố gắng sắp xếp để hình ảnh, bảng biểu ở vị trí gần với nội dung văn bản có tham chiếu đến hình ảnh, bảng biểu.
+
+Nếu một hình bao gồm nhiều hình nhỏ, ký hiệu các hình nhỏ bằng các chữ cái a), b), v.v... và giải thích nội dung các phần nhỏ ngay trong tiêu đề của hình.
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\linewidth]{images/hinh_3.png}
+  \caption{}
+  \label{fig:hinh4}
+\end{figure}
+
+\begin{figure}[H]
+  \centering
+  \includegraphics[width=0.6\linewidth]{images/hinh_4.png}
+  \caption{}
+  \label{fig:hinh4}
+\end{figure}
+
+Số hiệu và tiêu đề của hình để bên dưới hình. Số hiệu và tiêu đề của bảng nằm bên trên bảng. Chèn một dòng trắng vào bên trên hình và dưới tiêu đề của hình để ngăn cách với các phần văn bản phía trước và sau mỗi hình.
+
+\textbf{Hình }\textbf{2} minh họa mẫu định dạng tiêu đề của một hình được chèn trong bài báo. Định dạng các thành phần của bảng biểu được minh họa như trong Bảng 1.
+
+\textbf{Bảng }\textbf{1. }\textit{Ảnh hưởng của một số loại cây trồng xen đến tỉ lệ mọc mầm, }
+
+\textit{độ đồng đều và thời gian sinh trưởng của giống dong riềng DR3 }\textit{(số liệu trung bình 2 năm)}
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{|p{2cm}|p{2cm}|p{2cm}|p{2cm}|p{2cm}|p{2cm}|}
+  \hline
+    Trạng thái & Tỉ lệ mọc mầm (\%) & Độ đồng đều (điểm) & Thời gian từ trồng đến.... (ngày) & Thời gian từ trồng đến.... (ngày) & Thời gian từ trồng đến.... (ngày) \\
+  \hline
+    Trạng thái & Tỉ lệ mọc mầm (\%) & Độ đồng đều (điểm) & Mọc & Ra hoa & Thu hoạch \\
+  \hline
+    1 & 98,9 & 7 & 23 & 168 & 290 \\
+  \hline
+    2 & 99,7 & 7 & 22 & 176 & 306 \\
+  \hline
+    3 & 99,2 & 9 & 20 & 174 & 304 \\
+  \hline
+  \end{tabular}
+  \caption{Bảng 1}
+  \label{tab:bang1}
+\end{table}
+
+\textcolor[rgb]{1.000,0.000,0.000}{\textbf{Lưu ý:}}\textcolor[rgb]{1.000,0.000,0.000}{ Các thành phần của bảng biểu phải ở dạng văn bản chỉnh sửa được, không để dưới dạng ảnh chụp màn hình. }
+
+\section*{4. Kết luận (Conclusion)}
+
+Phần này trình bày ngắn gọn kết quả nghiên cứu cả về thành công và thất bại trong nghiên cứu, những điểm đáng chú ý trong các kết quả nghiên cứu; Làm nổi bật tính mới, tính sáng tạo, sự tiến bộ, khác biệt, độc đáo so với những kết quả có trước và nêu tính ứng dụng, thực tiễn, địa chỉ ứng dụng nhắm tới của kết quả nghiên cứu. Thông thường phần kết luận của bài báo được giới hạn không quá 200 từ, gồm 01 đoạn văn, không có tài liệu tham khảo. Lời cảm ơn: Cung cấp thông tin về việc hỗ trợ tài chính của cá nhân, tổ chức tài trợ nếu có; ghi nhận những đóng góp về mặt khoa học thông qua trao đổi, góp ý của chuyên gia, đồng nghiệp; những hỗ trợ về mặt kỹ thuật hoặc công nghệ. Thông thường phần lời cảm ơn được giới hạn không quá 100 từ, gồm 1 đoạn văn, không có tài liệu tham khảo. Lưu ý tránh trùng lặp nội dung với phần Tóm tắt. Có thể trình bày các định hướng nghiên cứu, phát triển, ứng dụng kết quả nghiên cứu.
+
+\textbf{Lời cám ơn}\textbf{ (}\textbf{Acknowledgement}\textbf{)}
+
+Gửi lời cám ơn các cá nhân, tổ chức đã đóng góp, tài trợ cho nghiên cứu. Phần này có tính tùy chọn.
+
+\textbf{Tuyên bố về xung đột lợi ích tiềm ẩn}\textbf{ (Conflict of interest)}
+
+Bài báo được đăng tải trên tạp chí buộc phải công khai các xung đột lợi ích tiểm ẩn, vì thế tác giả cung cấp một tuyên bố rõ ràng về các xung đột lợi ích tiềm ẩn này trong bản thảo bài báo gửi đi của mình. Nếu không có xung đột nào, tác giả cần khai “Các tác giả khai báo không có xung đột lợi ích”. Thông thường phần tuyên bố về xung đột lợi ích tiềm ẩn được giới hạn không quá 50 từ, gồm 1 đoạn văn, không có tài liệu tham khảo.
+
+\section*{Tài liệu tham khảo (Reference)}
+
+Danh mục tài liệu tham khảo chỉ liệt kê những tài liệu được trích dẫn trong bài báo. Ngược lại, tài liệu nào được tham chiếu trong bài cũng phải liệt lê trong danh sách tài liệu tham khảo. Yêu cầu thực hiện trích dẫn theo định dạng IEEE. Tác giả nên sử dụng các phần mềm quản lý tài liệu tham khảo chuyên dụng (như Endnote; Zotero; Biblioscape;...), hoặc sử dụng chức năng Insert Citation trong Microsoft Word để tự động hóa việc trích dẫn và định dạng danh mục tài liệu tham khảo một cách tự động, chính xác theo đúng chuẩn quốc tế. Một số hướng dẫn định dạng trích dẫn tài liệu tham khảo có trong file “Quy\_dinh\_trich\_dan\_Series\_A.pdf” và “Quy\_dinh\_trich\_dan\_Series\_B\_C.pdf” trong menu “Hướng dẫn dành cho tác giả” trên trang web của Tạp chí 
+
+\textcolor[rgb]{1.000,0.000,0.000}{Một số lưu ý quan trọng}\textcolor[rgb]{1.000,0.000,0.000}{ khác}\textcolor[rgb]{1.000,0.000,0.000}{:}
+
+Trong bài báo, tham chiếu đấn tài liệu trích dẫn bằng cách sử dụng dấu []. Dấu này cần được \textbf{đặt trước dấu ngắt câu}. Ví dụ: [1], [1–3] hoặc [1, 3]. Khi cần tham chiếu đến số trang của tài liệu, sử dụng ký hiệu p. hoặc pp., theo sau là số trang; ví dụ [5] (p. 10). or [6] (pp. 101–105). 
+
+Tài liệu tham khảo để cuối bài viết, chỉ sử dụng tiếng Anh và định dạng kiểu Roman. Lưu ý là các tạp chí trong nước xuất bản bằng tiếng Việt đều có tên bài báo và tóm tắt bằng tiếng Anh. Tác giả cần sử dụng những thông tin nguyên gốc này để đảm bảo người đọc có thể truy tìm tài liệu tham khảo khi cần. Những tài liệu không có thông tin bằng tiếng Anh cần dịch sang tiếng Anh và ghi chú rõ (Ví dụ: In Vietnamese). Lưu ý là nhiều tạp chí trong nước cùng có tên “Tạp chí Khoa học”, do vậy trùng tên tiếng Anh (Journal of Science). Khi trích dẫn bài viết từ các tạp chí này, cần ghi rõ tên đơn vị chủ quản để có thể định danh chính xác tạp chí. Ví dụ: Journal of Science and Technology – xxx university. Với một số tạp chí đã có tên tiếng Anh riêng, chẳng hạn Tạp chí Khoa học Trường Đại học Vinh đã được cấp phép tên chính thức là Vinh University Journal of Science, thì cần ghi đúng tên tiếng Anh của các tạp chí này.
+
+Có thể tham khảo nhanh một số ví dụ định dạng danh sách Tài liệu tham khảo như dưới đây.
+
+\textbf{TÀI LIỆU THAM KHẢO}
+
+\textbf{Lưu ý}\textbf{ }\textbf{trích dẫn và danh mục tài liệu tham khảo thực hiện theo}\textbf{: }
+
+\begin{itemize}
+\item  đối với bài báo gửi đăng trên Serie A (Khoa học tự nhiên, kỹ thuật và công nghệ) và
+\item  đối với bài báo gửi đăng trên Serie B (Khoa học xã hội và Nhân văn) và Serie C (Khoa học và Công nghệ giáo dục).
+\end{itemize}
+\textcolor[rgb]{1.000,0.000,0.000}{Tạp chí Khoa học Trường Đại học Vinh yêu cầu}\textcolor[rgb]{1.000,0.000,0.000}{ bắt buộc trong}\textcolor[rgb]{1.000,0.000,0.000}{ }\textcolor[rgb]{1.000,0.000,0.000}{danh mục tài liệu phải có ít nhất 01 bài báo }\textcolor[rgb]{1.000,0.000,0.000}{khoa học }\textcolor[rgb]{1.000,0.000,0.000}{được }\textcolor[rgb]{1.000,0.000,0.000}{xuất bản trong từ 1-2 năm trước liền kề }\textcolor[rgb]{1.000,0.000,0.000}{tại}\textcolor[rgb]{1.000,0.000,0.000}{ thời điểm nộp bài.}
+
+[1] Q. D. Nguyen, D. L. Nguyen, and V. T. Ngo, "Application of smart algorithm to monitor and control the source of base transceiver station," (in Vietnamese), \textit{TNU Journal of Science and Technology}; Vol. 204, No. 11: Natural Sciences - Engineering - Technology, pp. 23-30, 2019.
+
+[2] R. F. Hamade and F. Ismail, "A case for aggressive drilling of aluminum," \textit{Journal of Materials Processing Technology}, Vol. 166, no. 1, pp. 86-97, 2005.
+
+[3] R. Gomez-Flores, T. N. Thiruvengadathan, R. Nicol, et al., "Bioethanol and biobutanol production from sugarcorn juice," \textit{Biomass and Bioenergy}, vol. 108, pp. 455-463, 2018.
+
+[4] G. O. Young, “Synthetic structure of industrial plastics,” in \textit{Plastics}, vol. 3, \textit{Polymers of Hexadromicon}, J. Peters, Ed., 2nd ed. New York: McGraw-Hill, 1964, pp. 15-64.
+
+[5] S. P. Bingulac, “On the compatibility of adaptive controllers,” in \textit{Proc. 4th} \textit{Annu. Allerton Conf. Circuit and System Theory}, New York, 1994, pp. 8–16.
+
+[6] K. Ichiro, \textit{Thai Economy and Railway 1885–1935}, Tokyo: Nihon Keizai Hyoronsha (in Japanese), 2000.
+
+[7] C. Wilson-Clark, “Computers ranked as key literacy,” The Atlanta Journal Constitution, March 29, 2007. [Online], Available: http://www.thewest.com.au. [Accessed Sept. 18, 2007]..
+
+[8]  H. Zhang, “Delay- insensitive networks,” PhD. Thesis, University of Chicago, Chicago, IL, 2007.
+
+
+
+\end{document}

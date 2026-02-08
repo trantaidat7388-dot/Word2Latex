@@ -1,0 +1,208 @@
+% Mẫu XeLaTeX (Một cột)
+% Hỗ trợ Unicode và font hệ thống qua fontspec; tiếng Việt xử lý bởi polyglossia
+% Bố cục bài báo khoa học một cột chuẩn (authblk, abstract, natbib)
+\documentclass[11pt,a4paper]{article}
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+\usepackage{polyglossia}
+\setdefaultlanguage{vietnamese}
+\setotherlanguage{english}
+\usepackage{amsmath,amsthm,amssymb}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{array}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{multirow}
+\usepackage{enumitem}
+\usepackage{authblk}
+\usepackage{abstract}
+\usepackage{titlesec}
+\usepackage{fancyhdr}
+\usepackage{setspace}
+\usepackage{indentfirst}
+\usepackage[left=3cm,right=2cm,top=2.5cm,bottom=2.5cm]{geometry}
+
+\usepackage[numbers,sort&compress]{natbib}
+\bibliographystyle{plain}
+
+\definecolor{linkcolor}{RGB}{0,0,139}
+\definecolor{citecolor}{RGB}{0,100,139}
+\definecolor{urlcolor}{RGB}{0,100,0}
+
+\usepackage[colorlinks=true,linkcolor=linkcolor,citecolor=citecolor,urlcolor=urlcolor,bookmarks=true,bookmarksnumbered=true,pdfstartview=FitH]{hyperref}
+
+\usepackage[labelfont=bf,textfont=it,justification=justified,font=small]{caption}
+\captionsetup[table]{skip=3pt,position=top}
+\captionsetup[figure]{skip=3pt,position=bottom}
+
+\newcommand{\hl}[2]{\colorbox{#1}{#2}}
+
+\theoremstyle{plain}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{example}[theorem]{Example}
+
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{note}[theorem]{Note}
+
+\titleformat{\section}{\normalfont\large\bfseries}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection.}{0.5em}{}
+\titleformat{\subsubsection}{\normalfont\normalsize\itshape}{\thesubsubsection.}{0.5em}{}
+
+\setlength{\parindent}{1cm}
+\setlength{\parskip}{6pt}
+\onehalfspacing
+
+\setlist[itemize]{nosep,leftmargin=*,topsep=3pt,itemsep=3pt}
+\setlist[enumerate]{nosep,leftmargin=*,topsep=3pt,itemsep=3pt}
+
+\renewcommand{\abstractnamefont}{\normalfont\bfseries}
+\renewcommand{\abstracttextfont}{\normalfont\small}
+\setlength{\absleftindent}{1cm}
+\setlength{\absrightindent}{1cm}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\leftmark}
+\fancyhead[R]{\small\rightmark}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0pt}
+
+\begin{document}
+
+\textcolor[rgb]{0.004,0.231,0.235}{\textbf{Impact of Virtual Reality on Learning Outcomes }}\textcolor[rgb]{0.004,0.231,0.235}{\textbf{
+in High School Science Education}}
+
+A Comprehensive Analysis of Innovative Teaching Methods
+
+Dr. Sarah Benson, PhD
+
+Associate Professor of Educational Technology
+
+School of Education, University of Innovation
+
+Email: sarah.benson@univ-innov.edu
+
+\textcolor[rgb]{0.004,0.231,0.235}{\textbf{Citation Suggestion:}}
+
+Benson, S. (2083). Impact of Virtual Reality on Learning Outcomes in High School Science Education. Journal of Educational Technology \& Learning, 45(3), 150-175.
+
+\textcolor[rgb]{0.004,0.231,0.235}{\textbf{ABSTRACT}}
+
+This research examines the effectiveness of virtual reality (VR) as a tool in enhancing learning outcomes in high school science education. Amidst the growing integration of technology in educational settings, this study aims to evaluate how VR can be utilized to improve student engagement, understanding, and retention of scientific concepts. The study involved a controlled experiment with high school students from diverse backgrounds, using VR modules in subjects such as biology, physics, and chemistry. The methodology included pre- and post-test assessments to measure changes in student performance and comprehension, alongside qualitative feedback from students and teachers. The findings offer insights into the potential of VR as an educational tool, highlighting its benefits and challenges in a high school learning environment.
+
+\textcolor[rgb]{0.004,0.231,0.235}{\textbf{Keywords: }}Virtual Reality, Science Education, Educational Technology, Learning Outcomes
+
+\textbf{Copyright © 2083} by University of Innovation
+
+\textbf{Published by }University of Innovation Pre
+
+\textcolor[rgb]{0.004,0.231,0.235}{\textbf{INTRODUCTION}}
+
+The integration of technology in educational settings has opened new horizons for teaching and learning processes. Among these technological advancements, Virtual Reality (VR) stands out as a particularly promising tool, especially in the realm of science education. This research explores the potential of VR to enhance the learning experiences and outcomes of high school students in science subjects.
+
+The introduction of VR into educational settings represents a significant shift from traditional teaching methods. VR's immersive and interactive nature offers unique opportunities for students to engage with scientific concepts in a more hands-on and experiential manner. This study seeks to assess how VR can contribute to better understanding, engagement, and retention of scientific knowledge among high school students.
+
+This research is particularly timely and relevant, given the increasing emphasis on Science, Technology, Engineering, and Mathematics (STEM) education and the need for innovative teaching methods to captivate and inspire the next generation of scientists and technologists. By examining the effectiveness of VR in high school science education, this study aims to provide educators and policymakers with valuable insights into the potential of emerging technologies to revolutionize educational practices and outcomes.
+
+\textcolor[rgb]{0.004,0.231,0.235}{\textbf{LITERATURE REVIEW}}
+
+The immersive nature of VR has been identified as a key factor in enhancing student engagement and motivation in learning science. Mikropoulos and Natsis (2050) discuss how VR environments can create more engaging and interactive learning experiences, promoting active learning compared to traditional classroom settings. Similarly, Pantelidis (2050) suggests that VR can transform abstract scientific concepts into tangible experiences, enhancing students' understanding and retention. Studies have explored the impact of VR on learning outcomes, with mixed results. Merchant et al. (2050) found that VR can lead to improved spatial understanding and cognitive retention in students. In contrast, Makransky and Lilleholt (2050) caution that the effectiveness of VR in improving academic performance can vary depending on the subject matter and the design of the VR experience.
+
+Research by Radianti et al. (2050) highlights VR's potential to increase student motivation and interest in STEM subjects. The immersive experiences provided by VR can evoke curiosity and a sense of wonder, making learning more appealing to students. While the benefits of VR are notable, challenges in its implementation in education have also been identified. Dede (2050) points out issues such as high costs, the need for technical support, and the potential for cognitive overload in students. These factors can limit the widespread adoption of VR in educational settings. The role of teachers in integrating VR into their teaching practices is crucial. Kyaw et al. (2050) emphasize the need for teacher training and professional development to effectively utilize VR in classrooms. Teachers' attitudes and competencies in using VR can significantly influence its success as an educational tool.
+
+\textcolor[rgb]{0.004,0.231,0.235}{\textbf{METHODOLOGY}}
+
+The study involved high school students from several schools, with a total of 300 participants enrolled. The participants were evenly distributed among three subjects: biology, physics, and chemistry. The students were randomly assigned to two groups for each subject: a control group, which continued with traditional teaching methods, and an experimental group, which incorporated VR into their learning process.
+
+For the experimental group, VR modules tailored to the respective science subjects were introduced. These modules were designed to cover key topics in the curriculum, providing immersive and interactive experiences aligned with the learning objectives. The VR sessions were integrated into the regular class schedule, replacing some of the traditional teaching methods. Each VR session lasted approximately 30 minutes, conducted twice a week over a four-week period.
+
+To assess the impact of VR on learning outcomes, pre- and post-test assessments were conducted for both the control and experimental groups. These tests measured students’ understanding and retention of the subject matter. Additionally, student engagement was evaluated using a standardized engagement scale administered pre- and post-study period. The quantitative data from the pre- and post-tests and engagement scales were analyzed using statistical methods to compare the performance and engagement levels between the control and experimental groups.
+
+\textcolor[rgb]{0.004,0.231,0.235}{\textbf{RESULTS}}
+
+Table 1. Average scores for both groups
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{|p{2cm}|p{2cm}|p{2cm}|p{2cm}|p{2cm}|}
+  \hline
+    Aspect & Group & Pre-Test Score (Average) & Post-Test Score (Average) & Change in Score \\
+  \hline
+    Biology & Control & 70 & 73 & +3 \\
+  \hline
+    Biology & Experimental & 70 & 82 & +12 \\
+  \hline
+    Physics & Control & 72 & 74 & +2 \\
+  \hline
+    Physics & Experimental & 71 & 80 & +9 \\
+  \hline
+    Chemistry & Control & 69 & 71 & +2 \\
+  \hline
+    Chemistry & Experimental & 68 & 79 & +11 \\
+  \hline
+  \end{tabular}
+  \caption{Bảng 1}
+  \label{tab:bang1}
+\end{table}
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{|p{2cm}|p{2cm}|p{2cm}|p{2cm}|p{2cm}|}
+  \hline
+    Aspect & Group & Pre-Engagement Score (Average) & Post-Engagement Score (Average) & Change in Score \\
+  \hline
+    Student Engagement & Control & 6.5 & 6.8 & +0.3 \\
+  \hline
+    Student Engagement & Experimental & 6.4 & 8.2 & +1.8 \\
+  \hline
+  \end{tabular}
+  \caption{Bảng 2}
+  \label{tab:bang2}
+\end{table}
+
+\textcolor[rgb]{0.004,0.231,0.235}{\textbf{ANALYSIS}}
+
+The marked improvement in post-test scores for the experimental group using VR (increases of 12, 9, and 11 points in biology, physics, and chemistry respectively) strongly supports the notion presented by Mikropoulos and Natsis (2050) and Pantelidis (2050) that VR can transform abstract scientific concepts into tangible and interactive experiences, thereby enhancing understanding and retention. The more significant increase in scores among the experimental groups across all three subjects suggests that VR provides an immersive learning environment that enhances students' grasp of complex scientific concepts, a finding consistent with Merchant et al. (2050) who noted improved cognitive retention with VR usage.
+
+The substantial increase in engagement scores in the experimental group (from 6.4 to 8.2 on average) aligns with Radianti et al. (2050)'s findings on VR's potential to increase student motivation and interest. This suggests that the immersive and interactive nature of VR not only captures students' attention but also sustains their interest in the subject matter. The modest increase in the control group's engagement score (+0.3) compared to the experimental group (+1.8) highlights the added value of VR in making learning experiences more engaging and motivating.
+
+While the results are promising, they also echo the challenges noted by Dede (2050), such as the need for technical support and the potential for cognitive overload. The successful implementation of VR in these studies required careful planning and resources, underscoring the importance of addressing these challenges for wider adoption. Consistent with Kyaw et al. (2050), the study's findings imply that the role of teachers is pivotal in integrating VR into educational practices. The feedback from teachers indicated that training and familiarity with VR technology are crucial for its effective implementation in teaching.
+
+\textcolor[rgb]{0.004,0.231,0.235}{\textbf{CONCLUSION}}
+
+The analysis of the study's results affirms the potential of VR as an effective tool in enhancing learning outcomes in high school science education. It not only bolsters students’ understanding of complex subjects but also significantly increases their engagement and interest. These findings contribute to the growing body of research supporting the incorporation of innovative technologies like VR in educational settings, offering new avenues for making learning more effective and engaging.
+
+\textcolor[rgb]{0.004,0.231,0.235}{\textbf{REFERENCES}}
+
+Mikropoulos, T. A., \& Natsis, A. (2050). Educational Virtual Environments: A Ten-Year Review of Empirical Research (1999-2050). Computers \& Education, 56(3), 769-780.
+
+Pantelidis, V. S. (2050). Reasons to Use Virtual Reality in Education and Training Courses and a Model to Determine When to Use Virtual Reality. Themes in Science and Technology Education, 2(1-2), 59-70.
+
+Merchant, Z., Goetz, E. T., Cifuentes, L., Keeney-Kennicutt, W., \& Davis, T. J. (2050). Effectiveness of Virtual Reality-Based Instruction on Students' Learning Outcomes in K-12 and Higher Education: A Meta-Analysis. Computers \& Education, 70, 29-40.
+
+Makransky, G., \& Lilleholt, L. (2050). A Structural Equation Modeling Investigation of the Emotional Value of Immersive Virtual Reality in Education. Educational Technology Research and Development, 66, 1141-1164.
+
+Radianti, J., Majchrzak, T. A., Fromm, J., \& Wohlgenannt, I. (2050). A Systematic Review of Immersive Virtual Reality Applications for Higher Education: Design Elements, Lessons Learned, and Research Agenda. Computers \& Education, 147, 103778.
+
+Dede, C. (2050). Immersive Interfaces for Engagement and Learning. Science, 323(5910), 66-69.
+
+Kyaw, B. M., Saxena, N., Posadzki, P., Vseteckova, J., Nikolaou, C. K., George, P. P., Divakar, U., Masiello, I., Kononowicz, A. A., Zary, N., \& Tudor Car, L. (2050). Virtual Reality for Health Professions Education: Systematic Review and Meta-Analysis by the Digital Health Education Collaboration. Journal of Medical Internet Research, 21(1), e12959.
+
+Hunt, M. G., Marx, R., Lipson, C., \& Young, J. (2050). No More FOMO: Limiting Social Media Decreases Loneliness and Depression. Journal of Social and Clinical Psychology, 37(10), 751-768.
+
+\textcolor[rgb]{0.000,0.000,0.000}{\textbf{CHOOSE \& DOWNLOAD MORE }}\textcolor[rgb]{0.125,0.129,0.141}{\textbf{© }}
+
+
+
+\end{document}
