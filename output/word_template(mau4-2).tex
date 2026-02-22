@@ -1,7 +1,7 @@
-% Mẫu XeLaTeX (Một cột)
+% Mẫu XeLaTeX 
 % Hỗ trợ Unicode và font hệ thống qua fontspec; tiếng Việt xử lý bởi polyglossia
-% Bố cục bài báo khoa học một cột chuẩn (authblk, abstract, natbib)
-\documentclass[11pt,a4paper]{article}
+% Bố cục bài báo hai cột, kèm authblk (tác giả), abstract, và natbib (trích dẫn)
+\documentclass[11pt,a4paper,twocolumn]{article}
 \usepackage{fontspec}
 \setmainfont{Times New Roman}
 \usepackage{polyglossia}
@@ -10,7 +10,6 @@
 \usepackage{amsmath,amsthm,amssymb}
 \usepackage{amsfonts}
 \usepackage{graphicx}
-\usepackage{subcaption}
 \usepackage{float}
 \usepackage{xcolor}
 \usepackage{array}
@@ -24,7 +23,7 @@
 \usepackage{fancyhdr}
 \usepackage{setspace}
 \usepackage{indentfirst}
-\usepackage[left=3cm,right=2cm,top=2.5cm,bottom=2.5cm]{geometry}
+\usepackage[margin=2.5cm]{geometry}
 
 \usepackage[numbers,sort&compress]{natbib}
 \bibliographystyle{plain}
@@ -59,17 +58,17 @@
 \titleformat{\subsection}{\normalfont\normalsize\bfseries}{\thesubsection.}{0.5em}{}
 \titleformat{\subsubsection}{\normalfont\normalsize\itshape}{\thesubsubsection.}{0.5em}{}
 
-\setlength{\parindent}{1cm}
-\setlength{\parskip}{6pt}
-\onehalfspacing
+\setlength{\parindent}{0.5cm}
+\setlength{\parskip}{0pt}
+\setlength{\columnsep}{0.6cm}
 
-\setlist[itemize]{nosep,leftmargin=*,topsep=3pt,itemsep=3pt}
-\setlist[enumerate]{nosep,leftmargin=*,topsep=3pt,itemsep=3pt}
+\setlist[itemize]{nosep,leftmargin=*,topsep=3pt,itemsep=0pt}
+\setlist[enumerate]{nosep,leftmargin=*,topsep=3pt,itemsep=0pt}
 
 \renewcommand{\abstractnamefont}{\normalfont\bfseries}
 \renewcommand{\abstracttextfont}{\normalfont\small}
-\setlength{\absleftindent}{1cm}
-\setlength{\absrightindent}{1cm}
+\setlength{\absleftindent}{0pt}
+\setlength{\absrightindent}{0pt}
 
 \pagestyle{fancy}
 \fancyhf{}
@@ -166,9 +165,11 @@ Tài liệu này là bản mẫu về định dạng cho các bài báo xuất b
     \caption{}
     \label{fig:hinh2_b}
   \end{subfigure}
-  \caption{Hình 1. Thông số định dạng cho (a): văn bản nội dung, (b): tiêu đề các phần}
+  \caption{}
   \label{fig:nhom2}
 \end{figure}
+
+\textbf{Hình 1. }\textit{Thông số định dạng cho (a): văn bản nội dung, (b): tiêu đề các phần}
 
 Dung lượng mỗi bài báo \textbf{không quá }\textbf{mười}\textbf{ (}\textbf{10}\textbf{) trang}, trừ những bài báo review (Review Article) –Ban biên tập xem xét cụ thể độ dài của bài báo dạng này.
 
@@ -285,18 +286,18 @@ Số hiệu và tiêu đề của hình để bên dưới hình. Số hiệu v�
   \centering
   \begin{tabular}{|p{2cm}|p{2cm}|p{2cm}|p{2cm}|p{2cm}|p{2cm}|}
   \hline
-    \textbf{Trạng thái} & \textbf{Tỉ lệ mọc mầm (\%)} & \textbf{Độ đồng đều (điểm)} & \textbf{Thời gian từ trồng đến.... (ngày)} & \textbf{Thời gian từ trồng đến.... (ngày)} & \textbf{Thời gian từ trồng đến.... (ngày)} \\
+    Trạng thái & Tỉ lệ mọc mầm (\%) & Độ đồng đều (điểm) & Thời gian từ trồng đến.... (ngày) & Thời gian từ trồng đến.... (ngày) & Thời gian từ trồng đến.... (ngày) \\
   \hline
-    \textbf{Trạng thái} & \textbf{Tỉ lệ mọc mầm (\%)} & \textbf{Độ đồng đều (điểm)} & Mọc & Ra hoa & Thu hoạch \\
+    Trạng thái & Tỉ lệ mọc mầm (\%) & Độ đồng đều (điểm) & Mọc & Ra hoa & Thu hoạch \\
   \hline
-    1  & 98,9 & 7 & 23 & 168 & 290 \\
+    1 & 98,9 & 7 & 23 & 168 & 290 \\
   \hline
     2 & 99,7 & 7 & 22 & 176 & 306 \\
   \hline
     3 & 99,2 & 9 & 20 & 174 & 304 \\
   \hline
   \end{tabular}
-  \caption{}
+  \caption{Bảng 1}
   \label{tab:bang1}
 \end{table}
 
@@ -316,7 +317,7 @@ Bài báo được đăng tải trên tạp chí buộc phải công khai các x
 
 \section*{Tài liệu tham khảo (Reference)}
 
-Danh mục tài liệu tham khảo chỉ liệt kê những tài liệu được trích dẫn trong bài báo. Ngược lại, tài liệu nào được tham chiếu trong bài cũng phải liệt lê trong danh sách tài liệu tham khảo. Yêu cầu thực hiện trích dẫn theo định dạng IEEE. Tác giả nên sử dụng các phần mềm quản lý tài liệu tham khảo chuyên dụng (như Endnote; Zotero; Biblioscape;...), hoặc sử dụng chức năng Insert Citation trong Microsoft Word để tự động hóa việc trích dẫn và định dạng danh mục tài liệu tham khảo một cách tự động, chính xác theo đúng chuẩn quốc tế. Một số hướng dẫn định dạng trích dẫn tài liệu tham khảo có trong file “Quy\_dinh\_trich\_dan\_Series\_A.pdf” và “Quy\_dinh\_trich\_dan\_Series\_B\_C.pdf” trong menu “Hướng dẫn dành cho tác giả” trên trang web của Tạp chí \href{https://vujs.vn/}{\textcolor{blue}{}}
+Danh mục tài liệu tham khảo chỉ liệt kê những tài liệu được trích dẫn trong bài báo. Ngược lại, tài liệu nào được tham chiếu trong bài cũng phải liệt lê trong danh sách tài liệu tham khảo. Yêu cầu thực hiện trích dẫn theo định dạng IEEE. Tác giả nên sử dụng các phần mềm quản lý tài liệu tham khảo chuyên dụng (như Endnote; Zotero; Biblioscape;...), hoặc sử dụng chức năng Insert Citation trong Microsoft Word để tự động hóa việc trích dẫn và định dạng danh mục tài liệu tham khảo một cách tự động, chính xác theo đúng chuẩn quốc tế. Một số hướng dẫn định dạng trích dẫn tài liệu tham khảo có trong file “Quy\_dinh\_trich\_dan\_Series\_A.pdf” và “Quy\_dinh\_trich\_dan\_Series\_B\_C.pdf” trong menu “Hướng dẫn dành cho tác giả” trên trang web của Tạp chí 
 
 \textcolor[rgb]{1.000,0.000,0.000}{Một số lưu ý quan trọng}\textcolor[rgb]{1.000,0.000,0.000}{ khác}\textcolor[rgb]{1.000,0.000,0.000}{:}
 
@@ -331,8 +332,8 @@ Có thể tham khảo nhanh một số ví dụ định dạng danh sách Tài l
 \textbf{Lưu ý}\textbf{ }\textbf{trích dẫn và danh mục tài liệu tham khảo thực hiện theo}\textbf{: }
 
 \begin{itemize}
-\item \href{https://vujs.vn/DATA/0/FILE/2023/3/1/Quy_dinh_trich_dan_Series_A_1677666909580.pdf}{\textcolor{blue}{}} đối với bài báo gửi đăng trên Serie A (Khoa học tự nhiên, kỹ thuật và công nghệ) và
-\item \href{https://vujs.vn/DATA/0/FILE/2023/7/7/Quy_dinh_trich_dan_Series_B_C_1688748197874.pdf}{\textcolor{blue}{}} đối với bài báo gửi đăng trên Serie B (Khoa học xã hội và Nhân văn) và Serie C (Khoa học và Công nghệ giáo dục).
+\item  đối với bài báo gửi đăng trên Serie A (Khoa học tự nhiên, kỹ thuật và công nghệ) và
+\item  đối với bài báo gửi đăng trên Serie B (Khoa học xã hội và Nhân văn) và Serie C (Khoa học và Công nghệ giáo dục).
 \end{itemize}
 \textcolor[rgb]{1.000,0.000,0.000}{Tạp chí Khoa học Trường Đại học Vinh yêu cầu}\textcolor[rgb]{1.000,0.000,0.000}{ bắt buộc trong}\textcolor[rgb]{1.000,0.000,0.000}{ }\textcolor[rgb]{1.000,0.000,0.000}{danh mục tài liệu phải có ít nhất 01 bài báo }\textcolor[rgb]{1.000,0.000,0.000}{khoa học }\textcolor[rgb]{1.000,0.000,0.000}{được }\textcolor[rgb]{1.000,0.000,0.000}{xuất bản trong từ 1-2 năm trước liền kề }\textcolor[rgb]{1.000,0.000,0.000}{tại}\textcolor[rgb]{1.000,0.000,0.000}{ thời điểm nộp bài.}
 

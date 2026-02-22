@@ -2,6 +2,43 @@
 
 Advanced Word document (.docx) to LaTeX conversion system with comprehensive formula support.
 
+## 🚀 Quick Start
+
+### Option 1: Web Application (Recommended)
+
+1. **Start Backend API:**
+   ```bash
+   # Activate virtual environment
+   .venv\Scripts\Activate.ps1
+   
+   # Install backend dependencies
+   pip install -r backend/requirements.txt
+   
+   # Run FastAPI server
+   cd backend
+   python main.py
+   ```
+   Backend runs at: http://localhost:8000
+
+2. **Start Frontend:**
+   ```bash
+   # In new terminal
+   cd frontend
+   npm install
+   npm run dev
+   ```
+   Frontend runs at: http://localhost:3000
+
+3. **Configure Firebase** (see [HUONG_DAN_FIREBASE.md](HUONG_DAN_FIREBASE.md))
+
+### Option 2: Command Line
+
+```bash
+python src/chuyen_doi.py
+```
+
+---
+
 ## Features
 
 - 📄 **Complete Document Conversion**: Convert Word documents to LaTeX with full structure preservation
@@ -12,10 +49,13 @@ Advanced Word document (.docx) to LaTeX conversion system with comprehensive for
 - 📊 **Table Support**: Complex tables with merged cells
 - 📝 **Style Mapping**: Automatic Word styles to LaTeX commands conversion
 - 🎯 **Vietnamese Support**: Full Vietnamese text processing with XeLaTeX
+- 🌐 **Web Interface**: React frontend with Firebase authentication
+- ⚡ **REST API**: FastAPI backend for programmatic access
 
 ## Architecture
 
-The system consists of 6 modular components:
+### Backend (Python)
+The conversion engine consists of 6 modular components:
 
 - **chuyen_doi.py**: Main controller orchestrating the conversion process
 - **xu_ly_toan.py**: OMML mathematics processing (XSLT → Pandoc → Manual parsing)
@@ -24,27 +64,81 @@ The system consists of 6 modular components:
 - **config.py**: Configuration, namespaces, and character mappings
 - **utils.py**: LaTeX utilities and XeLaTeX compilation
 
+### Frontend (React)
+Modern web interface with:
+- **React 18 + Vite**: Fast development and optimized production builds
+- **Tailwind CSS**: Glassmorphism UI design
+- **Firebase**: Authentication (Google + Email) and Firestore database
+- **Framer Motion**: Smooth animations and transitions
+- **react-dropzone**: Drag & drop file upload
+
+### API (FastAPI)
+RESTful API endpoints:
+- `POST /api/chuyen-doi`: Upload and convert .docx files
+- `GET /api/tai-ve/{filename}`: Download converted .tex files
+- `GET /api/trang-thai/{job_id}`: Check conversion status
+
+## Project Structure
+
+```
+Word2Latex_Research/
+├── src/                    # Python conversion engine
+│   ├── chuyen_doi.py      # Main controller
+│   ├── xu_ly_toan.py      # Math processing
+│   ├── xu_ly_ole_equation.py
+│   ├── xu_ly_anh.py       # Image processing
+│   ├── config.py
+│   └── utils.py
+├── backend/               # FastAPI server
+│   ├── main.py           # API endpoints
+│   ├── requirements.txt
+│   ├── uploads/          # Temporary uploads
+│   └── outputs/          # Converted files
+├── frontend/             # React application
+│   ├── src/
+│   │   ├── features/     # Auth, Conversion, History
+│   │   ├── components/   # Shared UI components
+│   │   └── services/     # Firebase & API
+│   ├── package.json
+│   └── vite.config.js
+├── input_data/           # LaTeX templates
+└── output/              # CLI output directory
+```
+
 ## Installation
 
+### Python Backend
 ```bash
-# Clone repository
-git clone https://github.com/trantaidat7388-dot/Word2Latex.git
-cd Word2Latex
+# Create virtual environment
+python -m venv .venv
+.venv\Scripts\Activate.ps1  # Windows
 
 # Install dependencies
 pip install -r requirements.txt
+pip install -r backend/requirements.txt
+```
+
+### React Frontend
+```bash
+cd frontend
+npm install
 ```
 
 ## Usage
 
+### Web Application
+See [Quick Start](#-quick-start) above.
+
+### Command Line
 ```bash
-# Place your .docx file in input_data/ directory
-# Run conversion
+# Place your .docx file in input_data/
 python src/chuyen_doi.py
 
-# Output will be generated in output/ directory
-# Automatic XeLaTeX compilation creates PDF
+# Output in output/ directory
 ```
+
+### API Documentation
+Visit http://localhost:8000/docs for interactive Swagger UI.
 
 ## Requirements
 
@@ -99,12 +193,42 @@ Score ≥ 0.7: Content image (keep) | Score < 0.7: Decorative (filter out)
 
 ## Documentation
 
-See [DOCUMENTATION.txt](DOCUMENTATION.txt) for comprehensive technical documentation including:
+See detailed guides:
+- **[DOCUMENTATION.txt](DOCUMENTATION.txt)**: Comprehensive technical documentation
+- **[HUONG_DAN_FIREBASE.md](HUONG_DAN_FIREBASE.md)**: Firebase setup guide (Vietnamese)
+- **[HUONG_DAN_BACKEND.md](HUONG_DAN_BACKEND.md)**: Backend API guide (Vietnamese)
+
+Technical details include:
 - Detailed architecture overview
 - Data flow diagrams  
 - MTEF specification details
 - Performance metrics
 - Extension guidelines
+
+## API Endpoints
+
+### POST /api/chuyen-doi
+Upload and convert Word document to LaTeX.
+
+**Request:**
+- `file`: .docx file (max 10MB)
+- `template_type`: "onecolumn" or "twocolumn"
+
+**Response:**
+```json
+{
+  "trang_thai": "thanh_cong",
+  "job_id": "uuid",
+  "ten_file_dau_ra": "document_20260222_143022.tex",
+  "duong_dan_tai_ve": "/api/tai-ve/document_20260222_143022.tex"
+}
+```
+
+### GET /api/tai-ve/{filename}
+Download converted .tex file.
+
+### GET /api/trang-thai/{job_id}
+Check conversion job status.
 
 ## License
 

@@ -63,3 +63,18 @@ tmp/
 # Large test files (keep structure, ignore content)
 input_data/*.docx
 input_data/*.doc
+
+# Node.js
+node_modules/
+
+# Backend temp/output/upload files
+backend/outputs/
+backend/temp/
+backend/uploads/
+backend/__pycache__/
+
+# Temp jobs
+temp_jobs/
+
+# Firebase config (sensitive)
+frontend/src/services/firebaseConfig.js

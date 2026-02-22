@@ -17,6 +17,8 @@ import tempfile
 from copy import deepcopy
 from lxml import etree
 
+from utils import loc_ky_tu
+
 from config import (
     OMML_NAMESPACE, W_NAMESPACE,
     OMML_CHAR_MAP, NARY_SYMBOL_MAP, DELIMITER_MAP,
@@ -192,7 +194,7 @@ class BoXuLyToan:
                 return rf'\underset{{{children_latex[1]}}}{{{children_latex[0]}}}'
         elif tag == 'mtext':
             t = node.text or ''
-            return rf'\text{{{t}}}'
+            return rf'\text{{{loc_ky_tu(t)}}}'
         elif tag == 'mtable':
             rows = []
             for child in node:
