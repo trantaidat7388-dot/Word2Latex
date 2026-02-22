@@ -22,6 +22,7 @@ from config import (
     MAP_STYLE, HEADING_PATTERNS, DEFAULT_OMML2MML_XSL,
 )
 from xu_ly_anh import BoLocAnh
+from xu_ly_bang import BoXuLyBang
 from xu_ly_toan import BoXuLyToan
 from xu_ly_ole_equation import ole_equation_to_latex
 from utils import loc_ky_tu, bien_dich_latex, don_dep_file_rac
@@ -64,6 +65,9 @@ class ChuyenDoiWordSangLatex:
         # Khởi tạo bộ xử lý toán (XSLT / Pandoc / parser thủ công)
         duong_dan_xslt = duong_dan_xslt_omml or DEFAULT_OMML2MML_XSL
         self.bo_toan = BoXuLyToan(duong_dan_xslt=duong_dan_xslt)
+
+        # Khởi tạo bộ xử lý bảng (delegate để đảm bảo SRP)
+        self.bo_bang = BoXuLyBang(self)
 
     # ĐỌC FILE
 
@@ -135,43 +139,47 @@ class ChuyenDoiWordSangLatex:
             pass
         return None
 
+    def lay_url_tu_hyperlink_elem(self, hyperlink_elem) -> str:
+        # Lấy URL từ thẻ w:hyperlink dựa vào r:id và rels của document
+        try:
+            rId = hyperlink_elem.get(qn('r:id'))
+            if rId is None:
+                rId = hyperlink_elem.get(f'{{{R_NAMESPACE}}}id')
+            if not rId or not self.tai_lieu:
+                return None
+            rels = self.tai_lieu.part.rels
+            if rId in rels:
+                return rels[rId].target_ref
+        except Exception:
+            pass
+        return None
+
     def lay_tat_ca_hyperlink(self, doan_van) -> dict:
         # Trích xuất tất cả hyperlink từ đoạn văn, trả về dict {text: url}
         hyperlinks = {}
         try:
             for hyperlink_elem in doan_van._element.findall(f'.//{{{W_NAMESPACE}}}hyperlink'):
-                rId = hyperlink_elem.get(qn('r:id'))
-                if rId is None:
-                    rId = hyperlink_elem.get(f'{{{R_NAMESPACE}}}id')
-
-                if rId and self.tai_lieu:
-                    rels = self.tai_lieu.part.rels
-                    if rId in rels:
-                        url = rels[rId].target_ref
-                        text_parts = []
-                        for t_elem in hyperlink_elem.findall(f'.//{{{W_NAMESPACE}}}t'):
-                            if t_elem.text:
-                                text_parts.append(t_elem.text)
-                        link_text = ''.join(text_parts).strip()
-                        if link_text and url:
-                            hyperlinks[link_text] = url
+                url = self.lay_url_tu_hyperlink_elem(hyperlink_elem)
+                if not url:
+                    continue
+                text_parts = []
+                for t_elem in hyperlink_elem.findall(f'.//{{{W_NAMESPACE}}}t'):
+                    if t_elem.text:
+                        text_parts.append(t_elem.text)
+                link_text = ''.join(text_parts).strip()
+                if link_text:
+                    hyperlinks[link_text] = url
         except Exception:
             pass
         return hyperlinks
 
-    def xu_ly_run(self, run) -> str:
-        # Xử lý một run: escape ký tự + áp dụng bold/italic/màu/highlight/hyperlink
+    def xu_ly_run_thuong(self, run) -> str:
+        # Xử lý một run thường (không tự bọc hyperlink), giữ bold/italic/màu/highlight
         van_ban = run.text
         if not van_ban:
             return ""
 
         ket_qua = loc_ky_tu(van_ban)
-
-        # Kiểm tra hyperlink trước (ưu tiên cao nhất)
-        url = self.lay_hyperlink(run)
-        if url:
-            ket_qua = rf"\href{{{url}}}{{{ket_qua}}}"
-            return ket_qua
 
         mau = self.lay_mau_chu(run)
         highlight = self.lay_highlight(run)
@@ -188,6 +196,96 @@ class ChuyenDoiWordSangLatex:
             ket_qua = rf"\textcolor[rgb]{{{mau}}}{{{ket_qua}}}"
 
         return ket_qua
+
+    def xu_ly_noi_dung_doan_van(self, doan_van) -> str:
+        # Dựng nội dung paragraph theo XML để bắt hyperlink đúng chuẩn Word
+        run_map = {id(run._element): run for run in doan_van.runs}
+        ket_qua = ""
+
+        try:
+            for child in list(doan_van._element):
+                tag = child.tag.split('}')[-1] if hasattr(child, 'tag') else ''
+                if tag == 'hyperlink':
+                    url = self.lay_url_tu_hyperlink_elem(child)
+                    if not url:
+                        continue
+                    url_escaped = url.replace('%', '\\%').replace('#', '\\#')
+                    noi_dung_link = ""
+                    for r_elem in child.findall(f'.//{{{W_NAMESPACE}}}r'):
+                        run_obj = run_map.get(id(r_elem))
+                        if run_obj is not None:
+                            noi_dung_link += self.xu_ly_run_thuong(run_obj)
+                    ket_qua += rf"\href{{{url_escaped}}}{{\textcolor{{blue}}{{{noi_dung_link}}}}}"
+                elif tag == 'r':
+                    run_obj = run_map.get(id(child))
+                    if run_obj is not None:
+                        ket_qua += self.xu_ly_run_thuong(run_obj)
+        except Exception:
+            ket_qua = "".join(self.xu_ly_run_thuong(run) for run in doan_van.runs)
+
+        return ket_qua
+
+    def xu_ly_run(self, run) -> str:
+        # Xử lý một run: escape ký tự + áp dụng bold/italic/màu/highlight/hyperlink
+        van_ban = run.text
+        if not van_ban:
+            return ""
+
+        ket_qua = loc_ky_tu(van_ban)
+
+        mau = self.lay_mau_chu(run)
+        highlight = self.lay_highlight(run)
+        dam = run.bold
+        nghieng = run.italic
+
+        if dam:
+            ket_qua = r"\textbf{" + ket_qua + "}"
+        if nghieng:
+            ket_qua = r"\textit{" + ket_qua + "}"
+        if highlight:
+            ket_qua = rf"\colorbox{{{highlight}}}{{{ket_qua}}}"
+        if mau:
+            ket_qua = rf"\textcolor[rgb]{{{mau}}}{{{ket_qua}}}"
+
+        return ket_qua
+
+    def bat_caption_bang(self) -> str:
+        # Bắt caption thật của bảng từ paragraph ngay phía trên
+        try:
+            idx_truoc = self.vi_tri_hien_tai - 1
+            if idx_truoc < 0 or idx_truoc >= len(self.danh_sach_phan_tu):
+                return None
+            loai, phan_tu = self.danh_sach_phan_tu[idx_truoc]
+            if loai != 'paragraph':
+                return None
+            text = phan_tu.text.strip()
+            if not text:
+                return None
+            if re.match(r'^(BẢNG|BANG|TABLE)\b', text.strip(), re.IGNORECASE):
+                self.cac_doan_da_dung.add(idx_truoc)
+                return loc_ky_tu(text)
+        except Exception:
+            pass
+        return None
+
+    def bat_caption_hinh(self) -> str:
+        # Bắt caption thật của hình từ paragraph ngay phía dưới
+        try:
+            idx_sau = self.vi_tri_hien_tai + 1
+            if idx_sau < 0 or idx_sau >= len(self.danh_sach_phan_tu):
+                return None
+            loai, phan_tu = self.danh_sach_phan_tu[idx_sau]
+            if loai != 'paragraph':
+                return None
+            text = phan_tu.text.strip()
+            if not text:
+                return None
+            if re.match(r'^(HÌNH|HINH|ẢNH|ANH|FIGURE|FIG)\b', text.strip(), re.IGNORECASE):
+                self.cac_doan_da_dung.add(idx_sau)
+                return loc_ky_tu(text)
+        except Exception:
+            pass
+        return None
 
     # DANH SÁCH (itemize / enumerate)
 
@@ -233,6 +331,208 @@ class ChuyenDoiWordSangLatex:
             return latex
         return ""
 
+    def xu_ly_doan_van(self, doan_van, che_do_inline: bool = False) -> str:
+        # Xử lý đoạn văn; tự động inline ảnh nhỏ (icon) nếu đoạn có text dài kèm ảnh
+        ten_style = doan_van.style.name
+        text_raw = doan_van.text.strip().upper()
+        text_goc = doan_van.text.strip()
+
+        if len(text_raw) > 0:
+            self.dem_paragraph_thuc += 1
+
+        # Phát hiện TOC text
+        if 'TABLE OF CONTENTS' in text_raw or 'MỤC LỤC' in text_raw:
+            if not self.toc_da_sinh and len(text_raw) < 50:
+                self.toc_da_sinh = True
+                return r"\tableofcontents" + "\n\\newpage\n\n"
+            return ""
+
+        # Phát hiện phần nội dung chính (sau abstract/introduction)
+        if not self.da_qua_phan_noi_dung:
+            cac_tu_khoa = ['ABSTRACT', 'INTRODUCTION', 'TÓM TẮT',
+                           'GIỚI THIỆU', 'MỞ ĐẦU', 'CHƯƠNG 1']
+            for tu in cac_tu_khoa:
+                if tu in text_raw:
+                    self.da_qua_phan_noi_dung = True
+                    break
+
+        # Xử lý nội dung theo XML để bắt đúng hyperlink
+        noi_dung = self.xu_ly_noi_dung_doan_van(doan_van)
+
+        # Trích xuất ảnh và danh sách thông tin
+        danh_sach_anh, danh_sach_kich_thuoc = self.trich_xuat_anh(doan_van)
+        numId, ilvl = self.lay_thong_tin_danh_sach(doan_van)
+
+        # Tự động bật chế độ inline nếu có ảnh nhỏ (icon/decorative)
+        if not che_do_inline and danh_sach_anh:
+            # Kiểm tra nếu tất cả ảnh đều nhỏ (< 1.5 inch = 1,371,600 EMU) → inline
+            tat_ca_anh_nho = all(
+                (rong < 1371600 and cao < 1371600) 
+                for rong, cao in danh_sach_kich_thuoc
+            )
+            if tat_ca_anh_nho or len(text_goc) > 20:
+                che_do_inline = True
+
+        ket_qua = ""
+
+        if che_do_inline:
+            cong_thuc_list = self.bo_toan.trich_xuat_omml(doan_van)
+            for text_goc_ct, latex_ct in cong_thuc_list:
+                if latex_ct.strip():
+                    noi_dung = noi_dung.replace(text_goc_ct, f'${latex_ct}$')
+
+            ket_qua_inline = []
+            if danh_sach_anh:
+                ten_thu_muc = os.path.basename(self.thu_muc_anh)
+                for ten_anh in danh_sach_anh:
+                    ket_qua_inline.append(
+                        rf"\includegraphics[height=1.2em]{{{ten_thu_muc}/{ten_anh}}}"
+                    )
+
+            if noi_dung.strip():
+                ket_qua_inline.append(noi_dung)
+
+            return " ".join(ket_qua_inline)
+
+        # Nhieu anh trong 1 doan -> gom thanh subfigure
+        if len(danh_sach_anh) > 1:
+            caption_con = self.trich_xuat_caption_con()
+            if caption_con:
+                self.cac_doan_da_dung.add(self.vi_tri_hien_tai + 1)
+            caption_chinh = self.bat_caption_hinh()
+            ket_qua += self.tao_latex_nhom_hinh(danh_sach_anh, caption_con, caption_chinh)
+        else:
+            for ten_anh in danh_sach_anh:
+                caption_chinh = self.bat_caption_hinh()
+                ket_qua += self.tao_latex_hinh(ten_anh, caption_chinh)
+
+        # Xử lý danh sách
+        if numId is not None:
+            loai = self.xac_dinh_loai_danh_sach(numId)
+            if self.trang_thai_danh_sach is None:
+                for _ in range(ilvl + 1):
+                    ket_qua += self.mo_danh_sach(loai)
+                self.trang_thai_danh_sach = (loai, ilvl)
+            else:
+                loai_cu, cap_cu = self.trang_thai_danh_sach
+                if ilvl > cap_cu:
+                    for _ in range(cap_cu + 1, ilvl + 1):
+                        ket_qua += self.mo_danh_sach(loai)
+                elif ilvl < cap_cu:
+                    for _ in range(cap_cu - ilvl):
+                        ket_qua += self.dong_danh_sach(loai_cu)
+                self.trang_thai_danh_sach = (loai, ilvl)
+            ket_qua += r"\item " + noi_dung + "\n"
+        else:
+            ket_qua += self.dong_danh_sach_hien_tai()
+            if not noi_dung.strip():
+                return ket_qua
+
+            # Xử lý OMML math (thay text gốc bằng inline $...$)
+            cong_thuc_list = self.bo_toan.trich_xuat_omml(doan_van)
+            for text_goc_ct, latex_ct in cong_thuc_list:
+                if latex_ct.strip():
+                    noi_dung = noi_dung.replace(text_goc_ct, f'${latex_ct}$')
+
+            # Xác định heading (từ style hoặc từ nội dung)
+            lenh_latex = MAP_STYLE.get(ten_style, '')
+
+            if not lenh_latex:
+                heading_cmd, _ = self.phat_hien_heading(text_goc)
+                if heading_cmd:
+                    lenh_latex = heading_cmd
+
+            # Dùng starred heading (*) khi nội dung đã có số đầu dòng
+            if lenh_latex and lenh_latex in (r'\section', r'\subsection',
+                                             r'\subsubsection', r'\paragraph'):
+                if (re.match(r'^[\d\.]+\s*[A-Za-zÀ-ỹ]', text_goc)
+                        or re.match(r'^(CHƯƠNG|CHAPTER)\s*\d', text_goc, re.IGNORECASE)):
+                    lenh_latex = lenh_latex + '*'
+                elif lenh_latex == r'\section':
+                    self.dem_heading1 += 1
+                    if self.dem_heading1 == 1:
+                        lenh_latex = r'\section*'
+
+            if lenh_latex:
+                if lenh_latex is None:
+                    return ket_qua
+                ket_qua += f"{lenh_latex}{{{noi_dung}}}\n\n"
+            else:
+                ket_qua += f"{noi_dung}\n\n"
+
+        return ket_qua
+
+    def tao_latex_hinh(self, ten_anh: str, caption: str = None) -> str:
+        # Sinh mã LaTeX figure cho ảnh (includegraphics + caption + label)
+        label = f"fig:hinh{self.dem_anh}"
+        ten_thu_muc = os.path.basename(self.thu_muc_anh)
+        vi_tri = "[H]" if self.mode == 'demo' else "[htbp]"
+        latex = rf"\begin{{figure}}{vi_tri}" + "\n"
+        latex += r"  \centering" + "\n"
+        latex += rf"  \includegraphics[width=0.6\linewidth]{{{ten_thu_muc}/{ten_anh}}}" + "\n"
+        caption_final = caption or ""
+        latex += rf"  \caption{{{caption_final}}}" + "\n"
+        latex += rf"  \label{{{label}}}" + "\n"
+        latex += r"\end{figure}" + "\n\n"
+        return latex
+
+    def tao_latex_nhom_hinh(self, danh_sach_anh: list, danh_sach_caption: list = None, caption: str = None) -> str:
+        # Gom nhieu anh thanh 1 figure voi subfigure nam ngang
+        if not danh_sach_anh:
+            return ""
+        ten_thu_muc = os.path.basename(self.thu_muc_anh)
+        vi_tri = "[H]" if self.mode == 'demo' else "[htbp]"
+        so_anh = len(danh_sach_anh)
+        # Tinh do rong moi subfigure (tru khoang cach hfill)
+        do_rong = f"{0.9 / so_anh:.2f}" if so_anh > 1 else "0.48"
+
+        latex = rf"\begin{{figure}}{vi_tri}" + "\n"
+        latex += r"  \centering" + "\n"
+
+        for i, ten_anh in enumerate(danh_sach_anh):
+            # Lay phan mo ta (bo nhan (a),(b) vi subcaption tu sinh)
+            mo_ta = ""
+            if danh_sach_caption and i < len(danh_sach_caption):
+                # Loai bo phan "(a)" dau chuoi, chi giu mo ta
+                mo_ta = re.sub(r'^\([a-z]\)\s*', '', danh_sach_caption[i]).strip()
+            nhan = chr(ord('a') + i)
+
+            latex += rf"  \begin{{subfigure}}[b]{{{do_rong}\textwidth}}" + "\n"
+            latex += r"    \centering" + "\n"
+            latex += rf"    \includegraphics[width=\linewidth]{{{ten_thu_muc}/{ten_anh}}}" + "\n"
+            latex += rf"    \caption{{{mo_ta}}}" + "\n"
+            latex += rf"    \label{{fig:hinh{self.dem_anh - so_anh + i + 1}_{nhan}}}" + "\n"
+            latex += r"  \end{subfigure}" + "\n"
+            if i < so_anh - 1:
+                latex += r"  \hfill" + "\n"
+
+        caption_final = caption or ""
+        latex += rf"  \caption{{{caption_final}}}" + "\n"
+        latex += rf"  \label{{fig:nhom{self.dem_anh}}}" + "\n"
+        latex += r"\end{figure}" + "\n\n"
+        return latex
+
+    def trich_xuat_caption_con(self) -> list:
+        # Tim caption con (a), (b)... tu doan van ngay phia duoi
+        danh_sach = []
+        try:
+            vi_tri_ke = self.vi_tri_hien_tai + 1
+            if vi_tri_ke < len(self.danh_sach_phan_tu):
+                loai_ke, phan_tu_ke = self.danh_sach_phan_tu[vi_tri_ke]
+                if loai_ke == 'paragraph':
+                    text_ke = phan_tu_ke.text.strip()
+                    # Nhan dien pattern (a) mo ta, (b) mo ta...
+                    ket_qua = re.findall(r'\(([a-z])\)\s*([^(]*)', text_ke)
+                    if ket_qua:
+                        for nhan, mo_ta in ket_qua:
+                            caption = f"({nhan})"
+                            if mo_ta.strip():
+                                caption += f" {mo_ta.strip()}"
+                            danh_sach.append(loc_ky_tu(caption))
+        except Exception:
+            pass
+        return danh_sach
+
     # ẢNH: trích xuất, lọc, tạo LaTeX
 
     def lay_kich_thuoc_anh(self, run_element):
@@ -260,18 +560,20 @@ class ChuyenDoiWordSangLatex:
             kich_thuoc_anh_da_xem=self.kich_thuoc_anh_da_xem,
         )
 
-    def trich_xuat_anh(self, doan_van) -> list:
-        # Trích xuất ảnh từ paragraph, lọc trang trí, lưu ảnh nội dung
+    def trich_xuat_anh(self, doan_van) -> tuple:
+        # Trích xuất ảnh từ paragraph, lọc ảnh trang trí và lưu vào thư mục ảnh
+        # Trả về tuple(danh_sach_anh, danh_sach_kich_thuoc)
         danh_sach_anh = []
+        danh_sach_kich_thuoc = []
         if not self.tai_lieu:
-            return danh_sach_anh
+            return danh_sach_anh, danh_sach_kich_thuoc
 
         tong_so_anh = sum(
             1 for run in doan_van.runs
             for _ in run._element.findall(f'.//{{{A_NAMESPACE}}}blip')
         )
         if tong_so_anh > 3:
-            return danh_sach_anh
+            return danh_sach_anh, danh_sach_kich_thuoc
 
         for run in doan_van.runs:
             blips = run._element.findall(f'.//{{{A_NAMESPACE}}}blip')
@@ -310,8 +612,30 @@ class ChuyenDoiWordSangLatex:
                 duong_dan_anh = os.path.join(self.thu_muc_anh, ten_anh)
                 with open(duong_dan_anh, 'wb') as f:
                     f.write(part.blob)
+                
+                # Kiểm tra file ảnh có hợp lệ không
+                if not os.path.exists(duong_dan_anh) or os.path.getsize(duong_dan_anh) == 0:
+                    continue
+                
+                # Kiểm tra ảnh có thể mở được bằng PIL
+                try:
+                    from PIL import Image
+                    img = Image.open(duong_dan_anh)
+                    width, height = img.size
+                    # Nếu ảnh có kích thước 0, bỏ qua
+                    if width == 0 or height == 0:
+                        os.remove(duong_dan_anh)
+                        self.dem_anh -= 1
+                        continue
+                except Exception:
+                    # Nếu không mở được ảnh, xóa file và bỏ qua
+                    try:
+                        os.remove(duong_dan_anh)
+                        self.dem_anh -= 1
+                    except:
+                        pass
+                    continue
 
-                # Kiểm tra bằng metadata (vị trí, kích thước...)
                 if self.la_anh_trang_tri(kich_thuoc, doan_van):
                     try:
                         os.remove(duong_dan_anh)
@@ -320,7 +644,6 @@ class ChuyenDoiWordSangLatex:
                         pass
                     continue
 
-                # Kiểm tra bằng phân tích pixel (entropy, edge, histogram)
                 if not BoLocAnh.la_anh_noi_dung(duong_dan_anh):
                     try:
                         os.remove(duong_dan_anh)
@@ -330,76 +653,8 @@ class ChuyenDoiWordSangLatex:
                     continue
 
                 danh_sach_anh.append(ten_anh)
-        return danh_sach_anh
-
-    def tao_latex_hinh(self, ten_anh: str) -> str:
-        # Sinh mã LaTeX figure cho ảnh (includegraphics + caption + label)
-        label = f"fig:hinh{self.dem_anh}"
-        ten_thu_muc = os.path.basename(self.thu_muc_anh)
-        vi_tri = "[H]" if self.mode == 'demo' else "[htbp]"
-        latex = rf"\begin{{figure}}{vi_tri}" + "\n"
-        latex += r"  \centering" + "\n"
-        latex += rf"  \includegraphics[width=0.6\linewidth]{{{ten_thu_muc}/{ten_anh}}}" + "\n"
-        latex += r"  \caption{}" + "\n"
-        latex += rf"  \label{{{label}}}" + "\n"
-        latex += r"\end{figure}" + "\n\n"
-        return latex
-
-    def tao_latex_nhom_hinh(self, danh_sach_anh: list, danh_sach_caption: list = None) -> str:
-        # Gom nhieu anh thanh 1 figure voi subfigure nam ngang
-        if not danh_sach_anh:
-            return ""
-        ten_thu_muc = os.path.basename(self.thu_muc_anh)
-        vi_tri = "[H]" if self.mode == 'demo' else "[htbp]"
-        so_anh = len(danh_sach_anh)
-        # Tinh do rong moi subfigure (tru khoang cach hfill)
-        do_rong = f"{0.9 / so_anh:.2f}" if so_anh > 1 else "0.48"
-
-        latex = rf"\begin{{figure}}{vi_tri}" + "\n"
-        latex += r"  \centering" + "\n"
-
-        for i, ten_anh in enumerate(danh_sach_anh):
-            # Lay phan mo ta (bo nhan (a),(b) vi subcaption tu sinh)
-            mo_ta = ""
-            if danh_sach_caption and i < len(danh_sach_caption):
-                # Loai bo phan "(a)" dau chuoi, chi giu mo ta
-                mo_ta = re.sub(r'^\([a-z]\)\s*', '', danh_sach_caption[i]).strip()
-            nhan = chr(ord('a') + i)
-
-            latex += rf"  \begin{{subfigure}}[b]{{{do_rong}\textwidth}}" + "\n"
-            latex += r"    \centering" + "\n"
-            latex += rf"    \includegraphics[width=\linewidth]{{{ten_thu_muc}/{ten_anh}}}" + "\n"
-            latex += rf"    \caption{{{mo_ta}}}" + "\n"
-            latex += rf"    \label{{fig:hinh{self.dem_anh - so_anh + i + 1}_{nhan}}}" + "\n"
-            latex += r"  \end{subfigure}" + "\n"
-            if i < so_anh - 1:
-                latex += r"  \hfill" + "\n"
-
-        latex += r"  \caption{}" + "\n"
-        latex += rf"  \label{{fig:nhom{self.dem_anh}}}" + "\n"
-        latex += r"\end{figure}" + "\n\n"
-        return latex
-
-    def trich_xuat_caption_con(self) -> list:
-        # Tim caption con (a), (b)... tu doan van ngay phia duoi
-        danh_sach = []
-        try:
-            vi_tri_ke = self.vi_tri_hien_tai + 1
-            if vi_tri_ke < len(self.danh_sach_phan_tu):
-                loai_ke, phan_tu_ke = self.danh_sach_phan_tu[vi_tri_ke]
-                if loai_ke == 'paragraph':
-                    text_ke = phan_tu_ke.text.strip()
-                    # Nhan dien pattern (a) mo ta, (b) mo ta...
-                    ket_qua = re.findall(r'\(([a-z])\)\s*([^(]*)', text_ke)
-                    if ket_qua:
-                        for nhan, mo_ta in ket_qua:
-                            caption = f"({nhan})"
-                            if mo_ta.strip():
-                                caption += f" {mo_ta.strip()}"
-                            danh_sach.append(caption)
-        except Exception:
-            pass
-        return danh_sach
+                danh_sach_kich_thuoc.append(kich_thuoc)
+        return danh_sach_anh, danh_sach_kich_thuoc
 
     def trich_xuat_anh_tu_bang(self, bang: Table) -> list:
         # Trích xuất ảnh từ bảng (figure layout), luôn giữ ảnh
@@ -504,357 +759,9 @@ class ChuyenDoiWordSangLatex:
 
         return danh_sach_cong_thuc
 
-    # BẢNG: phát hiện loại + chuyển đổi
-
-    def la_table_of_contents(self, bang: Table) -> bool:
-        # Phát hiện bảng Mục lục (TOC) dựa trên từ khóa + cấu trúc
-        try:
-            if len(bang.rows) < 5:
-                return False
-
-            if self.tong_so_phan_tu > 0:
-                vi_tri_phan_tram = (self.vi_tri_hien_tai / self.tong_so_phan_tu) * 100
-                if vi_tri_phan_tram > 30:
-                    return False
-
-            toan_bo_text = ''
-            for hang in bang.rows[:min(5, len(bang.rows))]:
-                for cell in hang.cells:
-                    toan_bo_text += cell.text.strip().upper() + ' '
-
-            co_tu_khoa_toc = False
-            tu_khoa_muc_luc = ['MỤC LỤC', 'TABLE OF CONTENTS']
-            for tu in tu_khoa_muc_luc:
-                if tu in toan_bo_text:
-                    co_tu_khoa_toc = True
-                    break
-
-            dem_dau_cham = 0
-            dem_so_trang_cuoi = 0
-            dem_cau_truc_muc = 0
-
-            for hang in bang.rows[:min(20, len(bang.rows))]:
-                if len(hang.cells) == 0:
-                    continue
-
-                text_hang = ''.join([c.text for c in hang.cells])
-
-                if '.....' in text_hang or '…' in text_hang:
-                    dem_dau_cham += 1
-
-                if len(hang.cells) >= 2:
-                    cell_cuoi = hang.cells[-1].text.strip()
-                    if cell_cuoi.isdigit() and 1 <= len(cell_cuoi) <= 4:
-                        dem_so_trang_cuoi += 1
-
-                    cell_dau = hang.cells[0].text.strip().upper()
-                    if re.search(r'(CH[UƯ][ƠƯ]NG|CHAPTER|PH[ẦẦ]N|PART|M[ỤỦ]C)\s*\d', cell_dau):
-                        dem_cau_truc_muc += 1
-                    if re.search(r'^\d+\.?\d*\.?\s+[A-ZÀ-Ỹ]', cell_dau):
-                        dem_cau_truc_muc += 1
-
-            so_hang_kiem_tra = min(20, len(bang.rows))
-
-            # Cần từ khóa MỤC LỤC + ít nhất 1 tiêu chí cấu trúc
-            if co_tu_khoa_toc:
-                if dem_dau_cham >= 3 or dem_so_trang_cuoi >= 5:
-                    return True
-
-            # Không có từ khóa → cần 3 tiêu chí cùng lúc
-            if (dem_dau_cham > so_hang_kiem_tra * 0.5
-                    and dem_so_trang_cuoi > so_hang_kiem_tra * 0.5
-                    and dem_cau_truc_muc >= 3):
-                return True
-        except Exception:
-            pass
-        return False
-
-    def la_bang_chua_anh(self, bang: Table) -> bool:
-        # Phát hiện bảng chứa chủ yếu ảnh (figure layout)
-        try:
-            so_cell_co_anh = 0
-            so_cell_co_text_dai = 0
-            tong_cell = 0
-            cells_da_kiem = set()
-
-            for hang in bang.rows:
-                for cell in hang.cells:
-                    cell_id = id(cell._tc)
-                    if cell_id in cells_da_kiem:
-                        continue
-                    cells_da_kiem.add(cell_id)
-
-                    tong_cell += 1
-                    cell_text = cell.text.strip()
-                    co_anh = False
-
-                    for para in cell.paragraphs:
-                        for run in para.runs:
-                            blips = run._element.findall(f'.//{{{A_NAMESPACE}}}blip')
-                            if blips:
-                                co_anh = True
-                                break
-                        drawings = para._element.findall(f'.//{{{A_NAMESPACE}}}blip')
-                        if drawings:
-                            co_anh = True
-
-                    if co_anh:
-                        so_cell_co_anh += 1
-
-                    if re.match(r'^[\(\[]*[a-zA-Z0-9][\)\]]*\.?$', cell_text):
-                        pass  # label ngắn, bỏ qua
-                    elif re.match(r'^(Hình|Figure|Fig|Bảng|Table)\s*\d+', cell_text, re.IGNORECASE):
-                        pass  # label caption, bỏ qua
-                    elif len(cell_text) > 20:
-                        so_cell_co_text_dai += 1
-
-            if tong_cell == 0:
-                return False
-
-            if so_cell_co_anh >= 1:
-                if so_cell_co_text_dai <= 1:
-                    return True
-                if so_cell_co_anh / tong_cell >= 0.3:
-                    return True
-        except Exception:
-            pass
-        return False
-
-    def la_bang_layout(self, bang: Table) -> bool:
-        # Phát hiện bảng layout metadata (đầu bài báo: ISSN, Abstract, Keywords...)
-        try:
-            if self.tong_so_phan_tu > 0:
-                vi_tri_phan_tram = (self.vi_tri_hien_tai / self.tong_so_phan_tu) * 100
-                if vi_tri_phan_tram > 25:
-                    return False
-
-            toan_bo_text = ''
-            for hang in bang.rows[:min(10, len(bang.rows))]:
-                for cell in hang.cells:
-                    toan_bo_text += cell.text.strip().upper() + ' '
-
-            tu_khoa_layout = [
-                'ARTICLE INFORMATION', 'ARTICLE TITLE', 'JOURNAL:',
-                'ISSN:', 'ABSTRACT', 'KEYWORDS:', 'TỪ KHÓA:',
-                'AUTHOR', 'AFFILIATION', 'CORRESPONDENCE', 'CITATION',
-                'RECEIVED:', 'ACCEPTED:', 'PUBLISHED:', 'DOI:',
-                'OPEN ACCESS', 'TÓM TẮT', 'VOLUME:', 'ISSUE:',
-            ]
-
-            dem_tu_khoa = sum(1 for tu in tu_khoa_layout if tu in toan_bo_text)
-            if dem_tu_khoa >= 3:
-                return True
-        except Exception:
-            pass
-        return False
-
-    def la_bang_cong_thuc(self, bang: Table) -> bool:
-        # Phát hiện bảng công thức toán: 2 cột, cột cuối là số thứ tự (1), (2)...
-        try:
-            if len(bang.columns) != 2:
-                return False
-
-            dem_so_thu_tu = 0
-            for hang in bang.rows:
-                if len(hang.cells) >= 2:
-                    cell_cuoi = hang.cells[-1].text.strip()
-                    if re.match(r'^\(\d+\)$', cell_cuoi):
-                        dem_so_thu_tu += 1
-
-            if len(bang.rows) > 0 and dem_so_thu_tu / len(bang.rows) >= 0.5:
-                return True
-        except Exception:
-            pass
-        return False
-
-    def trich_xuat_noi_dung_bang_layout(self, bang: Table) -> str:
-        # Trích xuất nội dung text từ bảng layout (bỏ cấu trúc bảng)
-        ket_qua = []
-        da_xuat_para = set()
-        try:
-            for hang in bang.rows:
-                for cell in hang.cells:
-                    text = cell.text.strip()
-                    if text and len(text) > 2:
-                        for para in cell.paragraphs:
-                            noi_dung = ""
-                            for run in para.runs:
-                                noi_dung += self.xu_ly_run(run)
-                            noi_dung_clean = noi_dung.strip()
-                            if noi_dung_clean and noi_dung_clean not in da_xuat_para:
-                                da_xuat_para.add(noi_dung_clean)
-                                ket_qua.append(noi_dung + "\n\n")
-        except Exception:
-            pass
-        return ''.join(ket_qua)
-
-    def trich_xuat_omml_tu_cell(self, cell) -> str:
-        # Trích xuất công thức (OMML hoặc OLE) từ một cell của bảng
-        cong_thuc_parts = []
-        try:
-            for para in cell.paragraphs:
-                # 1. Tìm OMML
-                omath_list = para._element.findall(f'.//{{{OMML_NAMESPACE}}}oMath')
-                for omath in omath_list:
-                    latex = self.bo_toan.omml_element_to_latex(omath)
-                    if latex.strip():
-                        cong_thuc_parts.append(latex)
-
-                # 2. Tìm OLE Object nếu không có OMML
-                if not omath_list:
-                    objects = para._element.findall(f'.//{{{W_NAMESPACE}}}object')
-                    for obj in objects:
-                        ole = obj.find(f'.//{{{OLE_NAMESPACE}}}OLEObject')
-                        if ole is not None:
-                            # 2a. Thử parse MTEF → LaTeX (ưu tiên)
-                            ole_rid = ole.get(f'{{{R_NAMESPACE}}}id')
-                            if ole_rid:
-                                ole_part = self.tai_lieu.part.related_parts.get(ole_rid)
-                                if ole_part:
-                                    try:
-                                        latex_from_mtef = ole_equation_to_latex(ole_part.blob)
-                                        if latex_from_mtef.strip():
-                                            cong_thuc_parts.append(latex_from_mtef)
-                                            continue
-                                    except Exception:
-                                        pass
-
-                            # 2b. Fallback: trích xuất ảnh từ OLE
-                            imagedata = obj.find(f'.//{{{VML_NAMESPACE}}}imagedata')
-                            if imagedata is not None:
-                                rid = imagedata.get(f'{{{R_NAMESPACE}}}id')
-                                if rid:
-                                    part = self.tai_lieu.part.related_parts.get(rid)
-                                    if part:
-                                        self.dem_anh += 1
-                                        content_type = getattr(part, 'content_type', '')
-                                        ext = 'png'
-                                        if 'wmf' in content_type:
-                                            ext = 'wmf'
-                                        elif 'emf' in content_type:
-                                            ext = 'emf'
-                                        elif 'jpeg' in content_type:
-                                            ext = 'jpg'
-
-                                        ten_anh_goc = f'formula_{self.dem_anh}.{ext}'
-                                        if not os.path.exists(self.thu_muc_anh):
-                                            os.makedirs(self.thu_muc_anh)
-
-                                        duong_dan_anh = os.path.join(self.thu_muc_anh, ten_anh_goc)
-                                        with open(duong_dan_anh, 'wb') as f:
-                                            f.write(part.blob)
-
-                                        # Chuyển WMF/EMF → PNG (XeLaTeX không hỗ trợ)
-                                        ten_anh = ten_anh_goc
-                                        if ext in ('wmf', 'emf'):
-                                            try:
-                                                from PIL import Image
-                                                img = Image.open(duong_dan_anh)
-                                                ten_anh = f'formula_{self.dem_anh}.png'
-                                                duong_dan_png = os.path.join(self.thu_muc_anh, ten_anh)
-                                                new_size = (img.size[0] * 3, img.size[1] * 3)
-                                                img_resized = img.resize(new_size, Image.LANCZOS)
-                                                img_resized.save(duong_dan_png)
-                                                os.remove(duong_dan_anh)
-                                            except Exception:
-                                                pass
-
-                                        ten_thu_muc = os.path.basename(self.thu_muc_anh)
-                                        cong_thuc_parts.append(
-                                            rf'\includegraphics[height=1.5em]{{{ten_thu_muc}/{ten_anh}}}'
-                                        )
-
-                # 3. Fallback: lấy text nếu không có OMML/OLE
-                if not omath_list and not cong_thuc_parts:
-                    text = para.text.strip()
-                    if text:
-                        cong_thuc_parts.append(loc_ky_tu(text))
-
-            # Fallback cuối: cell.text
-            if not cong_thuc_parts:
-                cell_text = cell.text.strip()
-                if cell_text:
-                    cong_thuc_parts.append(loc_ky_tu(cell_text))
-        except Exception:
-            pass
-        return ' '.join(cong_thuc_parts)
-
-    def xu_ly_bang_cong_thuc(self, bang: Table) -> str:
-        # Chuyển bảng công thức thành equation environment (có \tag)
-        latex = ""
-        try:
-            for hang in bang.rows:
-                if len(hang.cells) >= 2:
-                    cong_thuc = self.trich_xuat_omml_tu_cell(hang.cells[0])
-                    cell_so = hang.cells[1].text.strip()
-
-                    so_match = re.match(r'^\((\d+)\)$', cell_so)
-                    if so_match:
-                        so = so_match.group(1)
-                        latex += r"\begin{equation}" + "\n"
-                        if cong_thuc.strip():
-                            latex += f"  {cong_thuc}\n"
-                        else:
-                            latex += f"  \\text{{[Công thức {so}]}}\n"
-                        latex += rf"  \tag{{{so}}}" + "\n"
-                        latex += r"\end{equation}" + "\n\n"
-        except Exception:
-            pass
-        return latex
-
     def xu_ly_bang(self, bang: Table) -> str:
-        # Xử lý bảng: phát hiện loại rồi sinh LaTeX tương ứng
-
-        # Bước 1: bảng layout → trích xuất text
-        if self.la_bang_layout(bang):
-            return self.trich_xuat_noi_dung_bang_layout(bang)
-
-        # Bước 2: bảng công thức → equation
-        if self.la_bang_cong_thuc(bang):
-            return self.xu_ly_bang_cong_thuc(bang)
-
-        # Bước 3: bảng Mục lục → \tableofcontents
-        if self.la_table_of_contents(bang):
-            if not self.toc_da_sinh:
-                self.toc_da_sinh = True
-                return r"\tableofcontents" + "\n\\newpage\n\n"
-            return ""
-
-        # Bước 4: bảng chứa ảnh -> figure (subfigure neu nhieu anh)
-        if self.la_bang_chua_anh(bang):
-            danh_sach_anh = self.trich_xuat_anh_tu_bang(bang)
-            if danh_sach_anh:
-                if len(danh_sach_anh) > 1:
-                    # Tim caption con tu cac cell text ngan trong bang
-                    caption_con = self._tim_caption_con_trong_bang(bang)
-                    return self.tao_latex_nhom_hinh(danh_sach_anh, caption_con)
-                else:
-                    return self.tao_latex_hinh(danh_sach_anh[0])
-
-        # Bước 5: bảng dữ liệu thường → tabular
-        self.so_bang_noi_dung += 1
-        self.dem_bang += 1
-        so_cot = len(bang.columns)
-        cot = '|' + '|'.join(['p{2cm}'] * so_cot) + '|'
-        vi_tri = "[H]" if self.mode == 'demo' else "[htbp]"
-
-        latex = rf"\begin{{table}}{vi_tri}" + "\n"
-        latex += r"  \centering" + "\n"
-        latex += rf"  \begin{{tabular}}{{{cot}}}" + "\n"
-        latex += r"  \hline" + "\n"
-
-        for hang in bang.rows:
-            dong = []
-            for o in hang.cells:
-                dong.append(loc_ky_tu(o.text.strip()))
-            latex += "    " + " & ".join(dong) + r" \\" + "\n"
-            latex += r"  \hline" + "\n"
-
-        latex += r"  \end{tabular}" + "\n"
-        latex += rf"  \caption{{Bảng {self.dem_bang}}}" + "\n"
-        latex += rf"  \label{{tab:bang{self.dem_bang}}}" + "\n"
-        latex += r"\end{table}" + "\n\n"
-        return latex
+        # Ủy quyền xử lý bảng cho BoXuLyBang để đảm bảo SRP
+        return self.bo_bang.xu_ly_bang(bang)
 
     # HEADING: phát hiện từ style và nội dung
 
@@ -866,119 +773,6 @@ class ChuyenDoiWordSangLatex:
             if match:
                 return (latex_cmd, text_strip)
         return (None, None)
-
-    # ĐOẠN VĂN: xử lý toàn bộ paragraph → LaTeX
-
-    def xu_ly_doan_van(self, doan_van) -> str:
-        # Xử lý một đoạn văn: heading, danh sách, công thức, ảnh, text
-        ten_style = doan_van.style.name
-        text_raw = doan_van.text.strip().upper()
-        text_goc = doan_van.text.strip()
-
-        if len(text_raw) > 0:
-            self.dem_paragraph_thuc += 1
-
-        # Phát hiện TOC text
-        if 'TABLE OF CONTENTS' in text_raw or 'MỤC LỤC' in text_raw:
-            if not self.toc_da_sinh and len(text_raw) < 50:
-                self.toc_da_sinh = True
-                return r"\tableofcontents" + "\n\\newpage\n\n"
-            return ""
-
-        # Phát hiện phần nội dung chính (sau abstract/introduction)
-        if not self.da_qua_phan_noi_dung:
-            cac_tu_khoa = ['ABSTRACT', 'INTRODUCTION', 'TÓM TẮT',
-                           'GIỚI THIỆU', 'MỞ ĐẦU', 'CHƯƠNG 1']
-            for tu in cac_tu_khoa:
-                if tu in text_raw:
-                    self.da_qua_phan_noi_dung = True
-                    break
-
-        # Xử lý từng run (formatting)
-        noi_dung = ""
-        for run in doan_van.runs:
-            noi_dung += self.xu_ly_run(run)
-
-        # Áp dụng hyperlink vào nội dung
-        hyperlinks = self.lay_tat_ca_hyperlink(doan_van)
-        for link_text, url in hyperlinks.items():
-            if link_text in noi_dung:
-                url_escaped = url.replace('%', '\\%').replace('#', '\\#')
-                text_escaped = loc_ky_tu(link_text)
-                href_cmd = rf"\href{{{url_escaped}}}{{{text_escaped}}}"
-                noi_dung = noi_dung.replace(link_text, href_cmd, 1)
-
-        # Trích xuất ảnh
-        danh_sach_anh = self.trich_xuat_anh(doan_van)
-        numId, ilvl = self.lay_thong_tin_danh_sach(doan_van)
-
-        ket_qua = ""
-        # Nhieu anh trong 1 doan -> gom thanh subfigure
-        if len(danh_sach_anh) > 1:
-            caption_con = self.trich_xuat_caption_con()
-            if caption_con:
-                # Danh dau doan caption con da dung, khong xuat lai
-                self.cac_doan_da_dung.add(self.vi_tri_hien_tai + 1)
-            ket_qua += self.tao_latex_nhom_hinh(danh_sach_anh, caption_con)
-        else:
-            for ten_anh in danh_sach_anh:
-                ket_qua += self.tao_latex_hinh(ten_anh)
-
-        # Xử lý danh sách
-        if numId is not None:
-            loai = self.xac_dinh_loai_danh_sach(numId)
-            if self.trang_thai_danh_sach is None:
-                for _ in range(ilvl + 1):
-                    ket_qua += self.mo_danh_sach(loai)
-                self.trang_thai_danh_sach = (loai, ilvl)
-            else:
-                loai_cu, cap_cu = self.trang_thai_danh_sach
-                if ilvl > cap_cu:
-                    for _ in range(cap_cu + 1, ilvl + 1):
-                        ket_qua += self.mo_danh_sach(loai)
-                elif ilvl < cap_cu:
-                    for _ in range(cap_cu - ilvl):
-                        ket_qua += self.dong_danh_sach(loai_cu)
-                self.trang_thai_danh_sach = (loai, ilvl)
-            ket_qua += r"\item " + noi_dung + "\n"
-        else:
-            ket_qua += self.dong_danh_sach_hien_tai()
-            if not noi_dung.strip():
-                return ket_qua
-
-            # Xử lý OMML math (thay text gốc bằng inline $...$)
-            cong_thuc_list = self.bo_toan.trich_xuat_omml(doan_van)
-            for text_goc, latex_ct in cong_thuc_list:
-                if latex_ct.strip():
-                    noi_dung = noi_dung.replace(text_goc, f'${latex_ct}$')
-
-            # Xác định heading (từ style hoặc từ nội dung)
-            lenh_latex = MAP_STYLE.get(ten_style, '')
-
-            if not lenh_latex:
-                heading_cmd, _ = self.phat_hien_heading(text_goc)
-                if heading_cmd:
-                    lenh_latex = heading_cmd
-
-            # Dùng starred heading (*) khi nội dung đã có số đầu dòng
-            if lenh_latex and lenh_latex in (r'\section', r'\subsection',
-                                             r'\subsubsection', r'\paragraph'):
-                if (re.match(r'^[\d\.]+\s*[A-Za-zÀ-ỹ]', text_goc)
-                        or re.match(r'^(CHƯƠNG|CHAPTER)\s*\d', text_goc, re.IGNORECASE)):
-                    lenh_latex = lenh_latex + '*'
-                elif lenh_latex == r'\section':
-                    self.dem_heading1 += 1
-                    if self.dem_heading1 == 1:
-                        lenh_latex = r'\section*'
-
-            if lenh_latex:
-                if lenh_latex is None:
-                    return ket_qua
-                ket_qua += f"{lenh_latex}{{{noi_dung}}}\n\n"
-            else:
-                ket_qua += f"{noi_dung}\n\n"
-
-        return ket_qua
 
     # FLOW CHÍNH: duyệt document → sinh nội dung → ghép template
 
@@ -1045,6 +839,12 @@ class ChuyenDoiWordSangLatex:
     def chuyen_doi(self):
         # Thực hiện chuyển đổi: đọc Word → sinh nội dung → ghép template → ghi file
         template = self.doc_template()
+        if r"\usepackage{multirow}" not in template:
+            goi_multirow = "\\usepackage{multirow}\n\\usepackage{multicol}\n"
+            if r"\begin{document}" in template:
+                template = template.replace(r"\begin{document}", goi_multirow + r"\begin{document}")
+            else:
+                template = template + "\n" + goi_multirow
         noi_dung = self.sinh_noi_dung()
         latex_cuoi = template.replace('%%CONTENT%%', noi_dung)
         with open(self.duong_dan_dau_ra, 'w', encoding='utf-8') as f:
