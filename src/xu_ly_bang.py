@@ -138,6 +138,14 @@ class BoXuLyBang:
                 if vi_tri_phan_tram > 25:
                     return False
 
+            # Bảng dữ liệu thật: nhiều hàng hoặc nhiều cột → không phải layout
+            so_hang = len(bang.rows)
+            so_cot = len(bang.columns) if bang.rows else 0
+            if so_hang >= 10:
+                return False
+            if so_cot >= 4:
+                return False
+
             toan_bo_text = ''
             for hang in bang.rows[:min(10, len(bang.rows))]:
                 for cell in hang.cells:
@@ -665,11 +673,30 @@ class BoXuLyBang:
                     token = rf"\multicolumn{{{colspan}}}{{|p{{{do_rong_cm}cm}}|}}{{{token}}}"
 
                 cells_out.append(token)
-                for _ in range(colspan - 1):
-                    cells_out.append('')
+                # Skip các cột đã bị gộp bởi multicolumn (không thêm empty &)
                 c += colspan
 
-            latex += "    " + " & ".join(cells_out[:so_cot]) + r" \\" + "\n"
+            # Loại bỏ trailing empty cells do skip colspan
+            while cells_out and cells_out[-1] == '' and len(cells_out) > 1:
+                cells_out.pop()
+            # Đảm bảo đủ số cột (nếu thiếu thì thêm empty)
+            while len(cells_out) < so_cot:
+                cells_out.append('')
+            # Loại bỏ empty cell SAU multicolumn (đã gộp)
+            # Build dòng chỉ với cells thực sự
+            dong_filtered = []
+            skip = 0
+            for i, cell_str in enumerate(cells_out):
+                if skip > 0:
+                    skip -= 1
+                    continue
+                dong_filtered.append(cell_str)
+                # Nếu cell này là multicolumn, skip (colspan-1) cells tiếp theo
+                mc_match = re.match(r'\\multicolumn\{(\d+)\}', cell_str)
+                if mc_match:
+                    skip = int(mc_match.group(1)) - 1
+
+            latex += "    " + " & ".join(dong_filtered) + r" \\" + "\n"
             latex += r"  \hline" + "\n"
 
         latex += r"  \end{tabular}" + "\n"

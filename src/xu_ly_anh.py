@@ -139,6 +139,11 @@ class BoLocAnh:
         if rong == 0 or cao == 0:
             return True
 
+        # Whitelist: style "Image" hoặc "FigureCaption" chắc chắn là ảnh nội dung
+        style_noi_dung = ['Image', 'FigureCaption', 'image', 'figurecaption']
+        if doan_van.style and doan_van.style.name in style_noi_dung:
+            return False
+
         ty_le = rong / cao if cao > 0 else 0
 
         if rong > 6500000 or cao > 8500000:

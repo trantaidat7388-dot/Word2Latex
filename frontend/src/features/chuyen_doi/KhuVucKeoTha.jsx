@@ -3,17 +3,17 @@
 import { useCallback, useState } from 'react'
 import { useDropzone } from 'react-dropzone'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Upload, 
-  FileText, 
-  X, 
+import {
+  Upload,
+  FileText,
+  X,
   AlertCircle,
   CheckCircle2,
   File
 } from 'lucide-react'
 
-const KhuVucKeoTha = ({ 
-  onChonFile, 
+const KhuVucKeoTha = ({
+  onChonFile,
   dangTaiLen = false,
   fileHienTai = null,
   onXoaFile,
@@ -25,11 +25,11 @@ const KhuVucKeoTha = ({
   const onDrop = useCallback((acceptedFiles, rejectedFiles) => {
     // Xử lý khi file được thả vào dropzone
     setDangKeoVao(false)
-    
+
     if (rejectedFiles.length > 0) {
       const loi = rejectedFiles[0].errors[0]
       if (loi.code === 'file-invalid-type') {
-        onChonFile(null, 'Chỉ chấp nhận file .docx')
+        onChonFile(null, 'Chỉ chấp nhận file .docx hoặc .docm')
       } else if (loi.code === 'file-too-large') {
         onChonFile(null, 'File quá lớn (tối đa 10MB)')
       }
@@ -44,7 +44,9 @@ const KhuVucKeoTha = ({
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx']
+      // Chấp nhận cả file .docx và .docm (Word Macro-Enabled)
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+      'application/vnd.ms-word.document.macroEnabled.12': ['.docm']
     },
     maxSize: 10 * 1024 * 1024, // 10MB
     multiple: false,
@@ -84,7 +86,7 @@ const KhuVucKeoTha = ({
               `}
             >
               <input {...getInputProps()} />
-              
+
               {/* Hiệu ứng glow khi kéo */}
               <AnimatePresence>
                 {(isDragActive || dangKeoVao) && (
@@ -125,7 +127,7 @@ const KhuVucKeoTha = ({
                     : 'Kéo & thả file Word của bạn'
                   }
                 </h3>
-                
+
                 <p className="text-white/50 text-sm mb-4">
                   hoặc nhấp để chọn file
                 </p>
@@ -133,7 +135,7 @@ const KhuVucKeoTha = ({
                 <div className="flex items-center gap-4 text-xs text-white/40">
                   <span className="flex items-center gap-1">
                     <FileText className="w-4 h-4" />
-                    Chỉ file .docx
+                    Chấp nhận .docx / .docm
                   </span>
                   <span>•</span>
                   <span>Tối đa 10MB</span>
@@ -145,7 +147,7 @@ const KhuVucKeoTha = ({
                 <motion.div
                   className="absolute inset-0 rounded-2xl pointer-events-none"
                   initial={{ opacity: 0 }}
-                  animate={{ 
+                  animate={{
                     opacity: [0.5, 1, 0.5],
                     boxShadow: [
                       '0 0 20px rgba(99,102,241,0.3)',
@@ -171,7 +173,7 @@ const KhuVucKeoTha = ({
               <div className="w-14 h-14 rounded-xl bg-primary-500/20 flex items-center justify-center flex-shrink-0">
                 <File className="w-7 h-7 text-primary-400" />
               </div>
-              
+
               <div className="flex-1 min-w-0">
                 <h4 className="text-white font-medium truncate">
                   {fileHienTai.name}

@@ -10,6 +10,9 @@
 
 import os
 import re
+import zipfile
+import shutil
+import tempfile
 
 from docx import Document
 from docx.oxml.ns import qn
@@ -26,6 +29,57 @@ from xu_ly_bang import BoXuLyBang
 from xu_ly_toan import BoXuLyToan
 from xu_ly_ole_equation import ole_equation_to_latex
 from utils import loc_ky_tu, bien_dich_latex, don_dep_file_rac
+
+
+def chuyen_docm_sang_docx(duong_dan_docm: str) -> str:
+    """Chuyển file .docm (macro-enabled) thành .docx bằng cách loại bỏ VBA macros.
+
+    python-docx không hỗ trợ mở .docm trực tiếp vì content type khác.
+    Hàm này mở .docm dưới dạng ZIP, bỏ vbaProject.bin, sửa [Content_Types].xml
+    và các .rels, rồi lưu thành file .docx tạm.
+
+    Returns:
+        Đường dẫn file .docx tạm (caller cần tự dọn nếu muốn).
+    """
+    duong_dan_docx = duong_dan_docm.rsplit('.', 1)[0] + '_converted.docx'
+
+    # Các file VBA cần loại bỏ (lowercase để so sánh)
+    vba_files = {'vbaproject.bin', 'vbadata.xml'}
+
+    with zipfile.ZipFile(duong_dan_docm, 'r') as zin:
+        with zipfile.ZipFile(duong_dan_docx, 'w', zipfile.ZIP_DEFLATED) as zout:
+            for item in zin.infolist():
+                ten_lower = item.filename.lower()
+                # Bỏ qua file VBA macros
+                ten_goc = os.path.basename(ten_lower)
+                if ten_goc in vba_files:
+                    continue
+                du_lieu = zin.read(item.filename)
+
+                # Sửa [Content_Types].xml: thay content type macro → docx thường
+                if item.filename == '[Content_Types].xml':
+                    du_lieu_str = du_lieu.decode('utf-8')
+                    du_lieu_str = du_lieu_str.replace(
+                        'application/vnd.ms-word.document.macroEnabled.main+xml',
+                        'application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml'
+                    )
+                    # Loại bỏ entry Override cho vbaProject / vbaData
+                    du_lieu_str = re.sub(
+                        r'<Override[^>]*(vbaProject|vbaData)[^>]*/>', '', du_lieu_str
+                    )
+                    du_lieu = du_lieu_str.encode('utf-8')
+
+                # Sửa các file .rels: loại bỏ Relationship tới vbaProject
+                elif ten_lower.endswith('.rels'):
+                    du_lieu_str = du_lieu.decode('utf-8')
+                    du_lieu_str = re.sub(
+                        r'<Relationship[^>]*(vbaProject|vbaData)[^>]*/>', '', du_lieu_str
+                    )
+                    du_lieu = du_lieu_str.encode('utf-8')
+
+                zout.writestr(item, du_lieu)
+
+    return duong_dan_docx
 
 class ChuyenDoiWordSangLatex:
     # Lớp chính chuyển đổi file Word (.docx) sang LaTeX (.tex)
@@ -62,6 +116,21 @@ class ChuyenDoiWordSangLatex:
         # Tap hop chi muc cac doan van da dung lam caption con (bo qua khi duyet)
         self.cac_doan_da_dung = set()
 
+        # Trạng thái xử lý title/author block (cho fallback %%CONTENT%%)
+        self.da_co_maketitle = False
+        self.dang_trong_abstract = False
+        self.danh_sach_author = []   # Tạm lưu author + affil
+
+        # --- Semantic Mapping: dữ liệu đã phân loại từ Word ---
+        self.parsed_data = {
+            'title': '',
+            'abstract': '',
+            'keywords': '',
+            'body': '',
+        }
+        # Vùng ngữ nghĩa hiện tại khi duyệt: pre_title → title → abstract → keywords → body
+        self._vung_hien_tai = 'pre_title'
+
         # Khởi tạo bộ xử lý toán (XSLT / Pandoc / parser thủ công)
         duong_dan_xslt = duong_dan_xslt_omml or DEFAULT_OMML2MML_XSL
         self.bo_toan = BoXuLyToan(duong_dan_xslt=duong_dan_xslt)
@@ -77,11 +146,24 @@ class ChuyenDoiWordSangLatex:
             return f.read()
 
     def doc_file_word(self):
-        # Đọc file Word (.docx) bằng python-docx
+        # Đọc file Word (.docx / .docm) bằng python-docx
         if not os.path.exists(self.duong_dan_word):
             raise FileNotFoundError(f"Không tìm thấy file: {self.duong_dan_word}")
+
+        duong_dan_thuc = self.duong_dan_word
+        self._file_docm_tam = None  # Lưu đường dẫn tạm để dọn sau
+
+        # Nếu file .docm (macro-enabled), chuyển sang .docx trước
+        if self.duong_dan_word.lower().endswith('.docm'):
+            try:
+                duong_dan_thuc = chuyen_docm_sang_docx(self.duong_dan_word)
+                self._file_docm_tam = duong_dan_thuc
+                print(f"[INFO] Đã chuyển .docm → .docx: {duong_dan_thuc}")
+            except Exception as e:
+                raise RuntimeError(f"Lỗi chuyển đổi .docm sang .docx: {e}")
+
         try:
-            self.tai_lieu = Document(self.duong_dan_word)
+            self.tai_lieu = Document(duong_dan_thuc)
             return self.tai_lieu
         except Exception as e:
             raise RuntimeError(f"Lỗi mở file: {e}")
@@ -212,9 +294,33 @@ class ChuyenDoiWordSangLatex:
                     url_escaped = url.replace('%', '\\%').replace('#', '\\#')
                     noi_dung_link = ""
                     for r_elem in child.findall(f'.//{{{W_NAMESPACE}}}r'):
+                        # Ưu tiên: dùng run_map nếu có, fallback đọc XML trực tiếp
                         run_obj = run_map.get(id(r_elem))
                         if run_obj is not None:
-                            noi_dung_link += self.xu_ly_run_thuong(run_obj)
+                            van_ban = run_obj.text
+                            if van_ban:
+                                formatted = loc_ky_tu(van_ban)
+                                if run_obj.bold:
+                                    formatted = r"\textbf{" + formatted + "}"
+                                if run_obj.italic:
+                                    formatted = r"\textit{" + formatted + "}"
+                                noi_dung_link += formatted
+                        else:
+                            # Fallback: đọc text trực tiếp từ XML <w:t> elements
+                            for t_elem in r_elem.findall(f'.//{{{W_NAMESPACE}}}t'):
+                                if t_elem.text:
+                                    formatted = loc_ky_tu(t_elem.text)
+                                    # Kiểm tra bold/italic qua XML <w:rPr>
+                                    rPr = r_elem.find(f'{{{W_NAMESPACE}}}rPr')
+                                    if rPr is not None:
+                                        if rPr.find(f'{{{W_NAMESPACE}}}b') is not None:
+                                            formatted = r"\textbf{" + formatted + "}"
+                                        if rPr.find(f'{{{W_NAMESPACE}}}i') is not None:
+                                            formatted = r"\textit{" + formatted + "}"
+                                    noi_dung_link += formatted
+                    # Nếu display text vẫn rỗng, dùng URL đầy đủ (không rút gọn)
+                    if not noi_dung_link.strip():
+                        noi_dung_link = loc_ky_tu(url)
                     ket_qua += rf"\href{{{url_escaped}}}{{\textcolor{{blue}}{{{noi_dung_link}}}}}"
                 elif tag == 'r':
                     run_obj = run_map.get(id(child))
@@ -263,26 +369,45 @@ class ChuyenDoiWordSangLatex:
                 return None
             if re.match(r'^(BẢNG|BANG|TABLE)\b', text.strip(), re.IGNORECASE):
                 self.cac_doan_da_dung.add(idx_truoc)
-                return loc_ky_tu(text)
+                caption_text = loc_ky_tu(text)
+                # Strip prefix "Table X:" / "Bảng X." để tránh duplicate với LaTeX tự sinh
+                caption_text = re.sub(
+                    r'^(Bảng|Bảng|Table|TABLE|Bang|BANG)\s*\d+\s*[:\.\-–—]?\s*',
+                    '', caption_text, flags=re.IGNORECASE
+                ).strip()
+                return caption_text
         except Exception:
             pass
         return None
 
     def bat_caption_hinh(self) -> str:
-        # Bắt caption thật của hình từ paragraph ngay phía dưới
+        # Bắt caption thật của hình từ paragraph phía dưới (tìm tối đa 5 đoạn)
         try:
-            idx_sau = self.vi_tri_hien_tai + 1
-            if idx_sau < 0 or idx_sau >= len(self.danh_sach_phan_tu):
-                return None
-            loai, phan_tu = self.danh_sach_phan_tu[idx_sau]
-            if loai != 'paragraph':
-                return None
-            text = phan_tu.text.strip()
-            if not text:
-                return None
-            if re.match(r'^(HÌNH|HINH|ẢNH|ANH|FIGURE|FIG)\b', text.strip(), re.IGNORECASE):
-                self.cac_doan_da_dung.add(idx_sau)
-                return loc_ky_tu(text)
+            for buoc in range(1, 6):
+                idx_sau = self.vi_tri_hien_tai + buoc
+                if idx_sau < 0 or idx_sau >= len(self.danh_sach_phan_tu):
+                    break
+                loai, phan_tu = self.danh_sach_phan_tu[idx_sau]
+                # Dừng nếu gặp bảng hoặc phần tử không phải paragraph
+                if loai == 'table':
+                    break
+                if loai != 'paragraph':
+                    continue
+                text = phan_tu.text.strip()
+                if not text:
+                    continue
+                if re.match(r'^(HÌNH|HINH|ẢNH|ANH|FIGURE|FIG)\b', text.strip(), re.IGNORECASE):
+                    self.cac_doan_da_dung.add(idx_sau)
+                    caption_text = loc_ky_tu(text)
+                    # Strip prefix "Hình X." / "Figure X:" / "Fig. 1:" để tránh duplicate với LaTeX tự sinh
+                    caption_text = re.sub(
+                        r'^(Hình|Figure|Fig\.?)\s*\d+\s*[:\.\-–—]?\s*',
+                        '', caption_text, flags=re.IGNORECASE
+                    ).strip()
+                    return caption_text
+                # Dừng nếu gặp section heading mới
+                if hasattr(phan_tu, 'style') and phan_tu.style and phan_tu.style.name and 'Heading' in phan_tu.style.name:
+                    break
         except Exception:
             pass
         return None
@@ -340,12 +465,116 @@ class ChuyenDoiWordSangLatex:
         if len(text_raw) > 0:
             self.dem_paragraph_thuc += 1
 
+        # === XỬ LÝ STYLE ACM ĐẶC BIỆT (trước khi xử lý chung) ===
+        style_cmd = MAP_STYLE.get(ten_style, '')
+
+        # Style None → bỏ qua hoàn toàn (CCS, Keywords metadata, ORCID...)
+        if style_cmd is None:
+            return ""
+
+        # Style \title → tạo \title{...} + \date{} (ẩn ngày tự động)
+        if style_cmd == r'\title':
+            noi_dung = self.xu_ly_noi_dung_doan_van(doan_van)
+            if noi_dung.strip():
+                return f"\\title{{{noi_dung.strip()}}}\n\\date{{}}\n"
+            return ""
+
+        # Style \subtitle → tạo \subtitle{...} (nếu template hỗ trợ)
+        if style_cmd == r'\subtitle':
+            noi_dung = self.xu_ly_noi_dung_doan_van(doan_van)
+            if noi_dung.strip():
+                return f"% Subtitle: {noi_dung.strip()}\n"
+            return ""
+
+        # Style \author → thu thập author
+        if style_cmd == r'\author':
+            if text_goc:
+                self.danh_sach_author.append(('author', text_goc))
+            return ""
+
+        # Style \affil → thu thập affiliation
+        if style_cmd == r'\affil':
+            if text_goc:
+                self.danh_sach_author.append(('affil', text_goc))
+            return ""
+
+        # Style \abstract → bắt đầu/tiếp tục abstract block
+        if style_cmd == r'\abstract':
+            noi_dung = self.xu_ly_noi_dung_doan_van(doan_van)
+            if not self.dang_trong_abstract:
+                self.dang_trong_abstract = True
+                # Xuất author block + \maketitle TRƯỚC abstract
+                ket_qua = self._xuat_author_block()
+                if not self.da_co_maketitle:
+                    ket_qua += "\\maketitle\n\n"
+                    self.da_co_maketitle = True
+                ket_qua += "\\begin{abstract}\n"
+                ket_qua += noi_dung.strip() + "\n"
+                return ket_qua
+            else:
+                return noi_dung.strip() + "\n"
+
+        # Khi gặp style khác mà đang trong abstract → đóng abstract
+        if self.dang_trong_abstract:
+            self.dang_trong_abstract = False
+            prefix = "\\end{abstract}\n\n"
+        else:
+            prefix = ""
+
+        # === XỬ LÝ DISPLAY EQUATION (DisplayFormula / DisplayFormulaUnnum) ===
+        if style_cmd in ('equation', 'equation*'):
+            cong_thuc_list = self.bo_toan.trich_xuat_omml(doan_van)
+            if cong_thuc_list:
+                latex_parts = [lt for _, lt in cong_thuc_list if lt.strip()]
+                if latex_parts:
+                    latex_math = ' '.join(latex_parts)
+                    if style_cmd == 'equation':
+                        return prefix + f"\\begin{{equation}}\n{latex_math}\n\\end{{equation}}\n\n"
+                    else:
+                        return prefix + f"\\[\n{latex_math}\n\\]\n\n"
+            # Fallback: nếu không trích xuất được OMML, xuất text thường
+            noi_dung = self.xu_ly_noi_dung_doan_van(doan_van)
+            if noi_dung.strip():
+                return prefix + noi_dung + "\n\n"
+            return prefix
+
+        # === XỬ LÝ BIB_ENTRY (References) ===
+        if style_cmd == 'bibitem':
+            noi_dung = self.xu_ly_noi_dung_doan_van(doan_van)
+            if not noi_dung.strip():
+                return ""
+            ket_qua_bib = ""
+            if not hasattr(self, 'dang_trong_bibliography') or not self.dang_trong_bibliography:
+                self.dang_trong_bibliography = True
+                self.dem_bib = 0
+                ket_qua_bib = prefix + "\\begin{thebibliography}{99}\n\n"
+            self.dem_bib += 1
+            ket_qua_bib += f"\\bibitem{{ref{self.dem_bib}}} {noi_dung.strip()}\n\n"
+            return ket_qua_bib
+
+        # === ĐÓNG BIBLIOGRAPHY nếu rời Bib_entry ===
+        if hasattr(self, 'dang_trong_bibliography') and self.dang_trong_bibliography:
+            # Bỏ qua paragraph trống (không đóng bibliography vì có thể chỉ là gap)
+            if not text_goc.strip():
+                return ""
+            # Chỉ đóng khi gặp heading hoặc nội dung thực sự (không phải Normal trống)
+            if style_cmd != 'bibitem':
+                self.dang_trong_bibliography = False
+                prefix = "\\end{thebibliography}\n\n" + prefix
+
+        # Khi gặp heading đầu tiên mà chưa có \maketitle → chèn
+        if not self.da_co_maketitle and style_cmd in (r'\section', r'\subsection', r'\subsubsection'):
+            pre = self._xuat_author_block()
+            pre += "\\maketitle\n\n"
+            self.da_co_maketitle = True
+            prefix = pre + prefix
+
         # Phát hiện TOC text
         if 'TABLE OF CONTENTS' in text_raw or 'MỤC LỤC' in text_raw:
             if not self.toc_da_sinh and len(text_raw) < 50:
                 self.toc_da_sinh = True
-                return r"\tableofcontents" + "\n\\newpage\n\n"
-            return ""
+                return prefix + r"\tableofcontents" + "\n\\newpage\n\n"
+            return prefix
 
         # Phát hiện phần nội dung chính (sau abstract/introduction)
         if not self.da_qua_phan_noi_dung:
@@ -438,27 +667,34 @@ class ChuyenDoiWordSangLatex:
             lenh_latex = MAP_STYLE.get(ten_style, '')
 
             if not lenh_latex:
-                heading_cmd, _ = self.phat_hien_heading(text_goc)
-                if heading_cmd:
-                    lenh_latex = heading_cmd
+                # Chỉ phát hiện heading từ content khi:
+                # 1. Style chưa được map (lenh_latex rỗng)
+                # 2. Style gốc là Normal hoặc không rõ (tránh false positive)
+                # 3. Paragraph chỉ chứa text ngắn (heading, không phải body text)
+                if ten_style in ('Normal', '', None) and len(text_goc.strip()) < 80:
+                    heading_cmd, _ = self.phat_hien_heading(text_goc)
+                    if heading_cmd:
+                        lenh_latex = heading_cmd
 
-            # Dùng starred heading (*) khi nội dung đã có số đầu dòng
+            # Dùng starred heading (*) chỉ khi nội dung đã có số đầu dòng
             if lenh_latex and lenh_latex in (r'\section', r'\subsection',
                                              r'\subsubsection', r'\paragraph'):
                 if (re.match(r'^[\d\.]+\s*[A-Za-zÀ-ỹ]', text_goc)
                         or re.match(r'^(CHƯƠNG|CHAPTER)\s*\d', text_goc, re.IGNORECASE)):
                     lenh_latex = lenh_latex + '*'
-                elif lenh_latex == r'\section':
-                    self.dem_heading1 += 1
-                    if self.dem_heading1 == 1:
-                        lenh_latex = r'\section*'
 
             if lenh_latex:
                 if lenh_latex is None:
-                    return ket_qua
-                ket_qua += f"{lenh_latex}{{{noi_dung}}}\n\n"
+                    return prefix + ket_qua
+                # ComputerCode → dùng \texttt thay vì verbatim{...}
+                if lenh_latex == 'verbatim':
+                    ket_qua += f"\\texttt{{{noi_dung}}}" + "\n\n"
+                else:
+                    ket_qua += f"{lenh_latex}{{{noi_dung}}}" + "\n\n"
             else:
                 ket_qua += f"{noi_dung}\n\n"
+
+            ket_qua = prefix + ket_qua
 
         return ket_qua
 
@@ -471,42 +707,59 @@ class ChuyenDoiWordSangLatex:
         latex += r"  \centering" + "\n"
         latex += rf"  \includegraphics[width=0.6\linewidth]{{{ten_thu_muc}/{ten_anh}}}" + "\n"
         caption_final = caption or ""
+        # Strip prefix "Hình X." / "Figure X:" nếu còn sót
+        caption_final = re.sub(
+            r'^(Hình|Figure|Fig\.?)\s*\d+\s*[:\.\-–—]?\s*',
+            '', caption_final, flags=re.IGNORECASE
+        ).strip()
         latex += rf"  \caption{{{caption_final}}}" + "\n"
         latex += rf"  \label{{{label}}}" + "\n"
         latex += r"\end{figure}" + "\n\n"
         return latex
 
     def tao_latex_nhom_hinh(self, danh_sach_anh: list, danh_sach_caption: list = None, caption: str = None) -> str:
-        # Gom nhieu anh thanh 1 figure voi subfigure nam ngang
+        # Gom nhieu anh thanh 1 figure nam ngang
         if not danh_sach_anh:
             return ""
         ten_thu_muc = os.path.basename(self.thu_muc_anh)
         vi_tri = "[H]" if self.mode == 'demo' else "[htbp]"
         so_anh = len(danh_sach_anh)
-        # Tinh do rong moi subfigure (tru khoang cach hfill)
         do_rong = f"{0.9 / so_anh:.2f}" if so_anh > 1 else "0.48"
+
+        # Kiem tra co caption con khong (Word co label (a),(b) khong)
+        co_caption_con = danh_sach_caption and len(danh_sach_caption) > 0
 
         latex = rf"\begin{{figure}}{vi_tri}" + "\n"
         latex += r"  \centering" + "\n"
 
-        for i, ten_anh in enumerate(danh_sach_anh):
-            # Lay phan mo ta (bo nhan (a),(b) vi subcaption tu sinh)
-            mo_ta = ""
-            if danh_sach_caption and i < len(danh_sach_caption):
-                # Loai bo phan "(a)" dau chuoi, chi giu mo ta
-                mo_ta = re.sub(r'^\([a-z]\)\s*', '', danh_sach_caption[i]).strip()
-            nhan = chr(ord('a') + i)
+        if co_caption_con:
+            # Co caption con -> dung subfigure
+            for i, ten_anh in enumerate(danh_sach_anh):
+                mo_ta = ""
+                if i < len(danh_sach_caption):
+                    mo_ta = re.sub(r'^\([a-z]\)\s*', '', danh_sach_caption[i]).strip()
+                nhan = chr(ord('a') + i)
 
-            latex += rf"  \begin{{subfigure}}[b]{{{do_rong}\textwidth}}" + "\n"
-            latex += r"    \centering" + "\n"
-            latex += rf"    \includegraphics[width=\linewidth]{{{ten_thu_muc}/{ten_anh}}}" + "\n"
-            latex += rf"    \caption{{{mo_ta}}}" + "\n"
-            latex += rf"    \label{{fig:hinh{self.dem_anh - so_anh + i + 1}_{nhan}}}" + "\n"
-            latex += r"  \end{subfigure}" + "\n"
-            if i < so_anh - 1:
-                latex += r"  \hfill" + "\n"
+                latex += rf"  \begin{{subfigure}}[b]{{{do_rong}\textwidth}}" + "\n"
+                latex += r"    \centering" + "\n"
+                latex += rf"    \includegraphics[width=\linewidth]{{{ten_thu_muc}/{ten_anh}}}" + "\n"
+                latex += rf"    \caption{{{mo_ta}}}" + "\n"
+                latex += rf"    \label{{fig:hinh{self.dem_anh - so_anh + i + 1}_{nhan}}}" + "\n"
+                latex += r"  \end{subfigure}" + "\n"
+                if i < so_anh - 1:
+                    latex += r"  \hfill" + "\n"
+        else:
+            # Khong co caption con -> layout don gian (khong subfigure, khong (a)(b)(c)(d))
+            for i, ten_anh in enumerate(danh_sach_anh):
+                latex += rf"  \includegraphics[width={do_rong}\linewidth]{{{ten_thu_muc}/{ten_anh}}}" + "\n"
+                if i < so_anh - 1:
+                    latex += r"  \hfill" + "\n"
 
         caption_final = caption or ""
+        caption_final = re.sub(
+            r'^(Hình|Figure|Fig\.?)\s*\d+\s*[:\.\-–—]?\s*',
+            '', caption_final, flags=re.IGNORECASE
+        ).strip()
         latex += rf"  \caption{{{caption_final}}}" + "\n"
         latex += rf"  \label{{fig:nhom{self.dem_anh}}}" + "\n"
         latex += r"\end{figure}" + "\n\n"
@@ -763,6 +1016,19 @@ class ChuyenDoiWordSangLatex:
         # Ủy quyền xử lý bảng cho BoXuLyBang để đảm bảo SRP
         return self.bo_bang.xu_ly_bang(bang)
 
+    def _xuat_author_block(self) -> str:
+        """Xuất block author/affil đã thu thập thành LaTeX."""
+        if not self.danh_sach_author:
+            return ""
+        ket_qua = ""
+        for loai, text in self.danh_sach_author:
+            if loai == 'author':
+                ket_qua += f"\\author{{{text}}}\n"
+            elif loai == 'affil':
+                ket_qua += f"\\affil{{{text}}}\n"
+        self.danh_sach_author = []  # Reset sau khi xuất
+        return ket_qua
+
     # HEADING: phát hiện từ style và nội dung
 
     def phat_hien_heading(self, text: str) -> tuple:
@@ -810,13 +1076,22 @@ class ChuyenDoiWordSangLatex:
         return danh_sach
 
     def sinh_noi_dung(self) -> str:
-        # Duyệt toàn bộ phần tử và sinh nội dung LaTeX
+        # Duyệt toàn bộ phần tử và sinh nội dung LaTeX (dùng cho fallback %%CONTENT%%)
         self.doc_file_word()
         noi_dung = []
         thu_tu_phan_tu = self.lay_thu_tu_phan_tu()
         self.tong_so_phan_tu = len(thu_tu_phan_tu)
         # Luu danh sach de cac ham khac co the nhin truoc/sau
         self.danh_sach_phan_tu = thu_tu_phan_tu
+
+        # Pre-scan: đánh dấu các paragraph là caption bảng (nằm ngay trước table)
+        for idx, (loai, phan_tu) in enumerate(thu_tu_phan_tu):
+            if loai == 'table' and idx > 0:
+                loai_truoc, pt_truoc = thu_tu_phan_tu[idx - 1]
+                if loai_truoc == 'paragraph':
+                    text_truoc = pt_truoc.text.strip()
+                    if text_truoc and re.match(r'^(BẢNG|BANG|TABLE)\b', text_truoc, re.IGNORECASE):
+                        self.cac_doan_da_dung.add(idx - 1)
 
         for idx, (loai, phan_tu) in enumerate(thu_tu_phan_tu):
             self.vi_tri_hien_tai = idx
@@ -836,26 +1111,634 @@ class ChuyenDoiWordSangLatex:
         noi_dung.append(self.dong_danh_sach_hien_tai())
         return ''.join(noi_dung)
 
+    # =====================================================================
+    # SEMANTIC MAPPING: Phân loại nội dung Word → Tiêm vào template LaTeX
+    # =====================================================================
+
+    def _la_doan_title(self, doan_van, idx: int) -> bool:
+        """Heuristic: đoạn văn nằm trong 10 phần tử đầu, chữ to/đậm/canh giữa → Title."""
+        if idx >= 10:
+            return False
+        text = doan_van.text.strip()
+        if not text or len(text) < 3:
+            return False
+
+        # Style tên "Title" hoặc "Title_document" do Word gán
+        ten_style = doan_van.style.name
+        if ten_style and ten_style.lower() in ('title', 'title_document'):
+            return True
+        # Kiểm tra qua MAP_STYLE: nếu style map sang \title → đây là title
+        style_cmd = MAP_STYLE.get(ten_style, '')
+        if style_cmd == r'\title':
+            return True
+
+        # Canh giữa
+        canh_giua = False
+        try:
+            alignment = doan_van.paragraph_format.alignment
+            if alignment is not None and alignment == 1:  # WD_ALIGN_PARAGRAPH.CENTER
+                canh_giua = True
+        except Exception:
+            pass
+
+        # Toàn bộ run đều bold
+        tat_ca_dam = False
+        runs = doan_van.runs
+        if runs:
+            tat_ca_dam = all(r.bold for r in runs if r.text.strip())
+
+        # Font size lớn (>= 14pt)
+        font_lon = False
+        try:
+            for r in runs:
+                if r.font.size and r.font.size.pt >= 14:
+                    font_lon = True
+                    break
+        except Exception:
+            pass
+
+        # Kết hợp: canh giữa + đậm, hoặc font lớn + đậm
+        if (canh_giua and tat_ca_dam) or (font_lon and tat_ca_dam):
+            return True
+
+        return False
+
+    def _la_nhan_vung(self, text: str, cac_nhan: list) -> bool:
+        """Kiểm tra text có phải nhãn bắt đầu vùng hay không (Abstract, Keywords...)."""
+        text_upper = text.strip().upper()
+        # Loại bỏ số thứ tự đầu dòng nếu có: "1. ABSTRACT" → "ABSTRACT"
+        text_upper = re.sub(r'^[\d\.]+\s*', '', text_upper).strip()
+        for nhan in cac_nhan:
+            if text_upper == nhan.upper() or text_upper.startswith(nhan.upper() + ':'):
+                return True
+        return False
+
+    def _la_nhan_abstract(self, text: str) -> bool:
+        """Kiểm tra text là nhãn 'Abstract' / 'Tóm tắt'."""
+        return self._la_nhan_vung(text, ['ABSTRACT', 'TÓM TẮT', 'TOM TAT'])
+
+    def _la_nhan_keywords(self, text: str) -> bool:
+        """Kiểm tra text là nhãn 'Keywords' / 'Từ khóa'."""
+        return self._la_nhan_vung(text, ['KEYWORDS', 'INDEX TERMS', 'TỪ KHÓA', 'TU KHOA', 'KEY WORDS'])
+
+    def _la_nhan_body(self, text: str) -> bool:
+        """Kiểm tra text là nhãn bắt đầu phần body (Introduction, Giới thiệu...)."""
+        cac_nhan = [
+            'INTRODUCTION', 'GIỚI THIỆU', 'GIOI THIEU', 'MỞ ĐẦU', 'MO DAU',
+            'CHƯƠNG 1', 'CHUONG 1', 'CHAPTER 1', 'I. INTRODUCTION',
+            'BACKGROUND', 'RELATED WORK', 'LITERATURE REVIEW',
+            'METHODOLOGY', 'METHODS', 'PHƯƠNG PHÁP',
+        ]
+        text_upper = text.strip().upper()
+        text_upper = re.sub(r'^[\d\.]+\s*', '', text_upper).strip()
+        for nhan in cac_nhan:
+            if text_upper == nhan or text_upper.startswith(nhan):
+                return True
+        # Heading pattern: "I. ..." hoặc "1. ..."
+        if re.match(r'^[IV]+\.\s+', text.strip()):
+            return True
+        return False
+
+    def phan_tich_ngu_nghia(self):
+        """BƯỚC 1: Duyệt Word, phân loại nội dung vào parsed_data.
+
+        State machine: pre_title → title → abstract → keywords → body
+        Mỗi phần tử được xử lý thành LaTeX rồi gán vào vùng tương ứng.
+        """
+        self.doc_file_word()
+        thu_tu_phan_tu = self.lay_thu_tu_phan_tu()
+        self.tong_so_phan_tu = len(thu_tu_phan_tu)
+        self.danh_sach_phan_tu = thu_tu_phan_tu
+
+        # Reset
+        self._vung_hien_tai = 'pre_title'
+        bo_dem_abstract = 0  # Đếm đoạn văn trong vùng abstract
+        bo_dem_keywords = 0
+
+        # Template đã có \maketitle → không cho xu_ly_doan_van chèn thêm
+        self.da_co_maketitle = True
+
+        # Các buffer tạm
+        buf_body = []
+        buf_abstract = []
+        buf_keywords = []
+        buf_authors = []
+        title_parts = []
+
+        # Pre-scan: đánh dấu các paragraph là caption bảng (nằm ngay trước table)
+        # để tránh xuất chúng lần nữa trong body
+        for idx, (loai, phan_tu) in enumerate(thu_tu_phan_tu):
+            if loai == 'table' and idx > 0:
+                loai_truoc, pt_truoc = thu_tu_phan_tu[idx - 1]
+                if loai_truoc == 'paragraph':
+                    text_truoc = pt_truoc.text.strip()
+                    if text_truoc and re.match(r'^(BẢNG|BANG|TABLE)\b', text_truoc, re.IGNORECASE):
+                        self.cac_doan_da_dung.add(idx - 1)
+
+        for idx, (loai, phan_tu) in enumerate(thu_tu_phan_tu):
+            self.vi_tri_hien_tai = idx
+            if idx in self.cac_doan_da_dung:
+                continue
+
+            # ---- Xác định chuyển vùng (state transition) ----
+            if loai == 'paragraph':
+                text_raw = phan_tu.text.strip()
+                ten_style_p = phan_tu.style.name if phan_tu.style else ''
+                style_cmd_p = MAP_STYLE.get(ten_style_p, '')
+
+                # === Phát hiện vùng dựa trên STYLE ACM trước (ưu tiên cao) ===
+                # Title style → luôn capture vào title_parts
+                if style_cmd_p == r'\title':
+                    self._vung_hien_tai = 'title'
+                    if text_raw:
+                        title_parts.append(loc_ky_tu(text_raw))
+                    continue
+
+                # Author / Affiliation → thu thập vào buf_authors
+                if style_cmd_p in (r'\author', r'\affil'):
+                    if text_raw:
+                        buf_authors.append(text_raw)
+                    if self._vung_hien_tai == 'title':
+                        pass  # Vẫn ở vùng title, chờ abstract
+                    continue
+
+                # Abstract style → capture nội dung vào buf_abstract
+                if style_cmd_p == r'\abstract':
+                    if self._vung_hien_tai != 'abstract':
+                        self._vung_hien_tai = 'abstract'
+                    noi_dung_abs = self.xu_ly_noi_dung_doan_van(phan_tu)
+                    if noi_dung_abs.strip():
+                        buf_abstract.append(noi_dung_abs.strip() + '\n')
+                    continue
+
+                # Keywords style (MAP_STYLE = None nhưng tên style là 'Keywords')
+                if ten_style_p in ('Keywords', 'KeyWordHead'):
+                    if ten_style_p == 'Keywords' and text_raw:
+                        self._vung_hien_tai = 'keywords'
+                        buf_keywords.append(loc_ky_tu(text_raw))
+                    continue
+
+                # Các style bị bỏ qua hoàn toàn (metadata)
+                if style_cmd_p is None:
+                    continue
+
+                # === Fallback: dùng heuristics cho các style khác ===
+
+                # Từ pre_title → phát hiện Title
+                if self._vung_hien_tai == 'pre_title':
+                    if self._la_doan_title(phan_tu, idx):
+                        self._vung_hien_tai = 'title'
+                        title_parts.append(loc_ky_tu(text_raw))
+                        continue
+                    elif self._la_nhan_abstract(text_raw):
+                        self._vung_hien_tai = 'abstract'
+                        if len(text_raw) < 30:
+                            continue
+                        noi_dung_sau_nhan = re.sub(
+                            r'^(abstract|tóm tắt|tom tat)[:\s]*', '', text_raw, flags=re.IGNORECASE
+                        ).strip()
+                        if noi_dung_sau_nhan:
+                            buf_abstract.append(loc_ky_tu(noi_dung_sau_nhan))
+                        continue
+                    elif self._la_nhan_body(text_raw):
+                        self._vung_hien_tai = 'body'
+                    elif not text_raw:
+                        continue
+
+                # Từ title → gom thêm hoặc chuyển sang abstract/body
+                elif self._vung_hien_tai == 'title':
+                    if self._la_doan_title(phan_tu, idx):
+                        title_parts.append(loc_ky_tu(text_raw))
+                        continue
+                    elif self._la_nhan_abstract(text_raw):
+                        self._vung_hien_tai = 'abstract'
+                        if len(text_raw) < 30:
+                            continue
+                        noi_dung_sau_nhan = re.sub(
+                            r'^(abstract|tóm tắt|tom tat)[:\s]*', '', text_raw, flags=re.IGNORECASE
+                        ).strip()
+                        if noi_dung_sau_nhan:
+                            buf_abstract.append(loc_ky_tu(noi_dung_sau_nhan))
+                        continue
+                    elif self._la_nhan_body(text_raw):
+                        self._vung_hien_tai = 'body'
+                    elif text_raw:
+                        self._vung_hien_tai = 'body'
+
+                # Từ abstract → chuyển sang keywords hoặc body
+                elif self._vung_hien_tai == 'abstract':
+                    if self._la_nhan_keywords(text_raw):
+                        self._vung_hien_tai = 'keywords'
+                        if len(text_raw) < 30:
+                            continue
+                        noi_dung_sau_nhan = re.sub(
+                            r'^(keywords|index terms|từ khóa|tu khoa|key words)[:\s]*',
+                            '', text_raw, flags=re.IGNORECASE
+                        ).strip()
+                        if noi_dung_sau_nhan:
+                            buf_keywords.append(loc_ky_tu(noi_dung_sau_nhan))
+                        continue
+                    elif self._la_nhan_body(text_raw):
+                        self._vung_hien_tai = 'body'
+                    elif text_raw:
+                        bo_dem_abstract += 1
+                        if bo_dem_abstract > 10:
+                            self._vung_hien_tai = 'body'
+
+                # Từ keywords → chuyển sang body
+                elif self._vung_hien_tai == 'keywords':
+                    if self._la_nhan_body(text_raw):
+                        self._vung_hien_tai = 'body'
+                    elif text_raw:
+                        bo_dem_keywords += 1
+                        if bo_dem_keywords > 3:
+                            self._vung_hien_tai = 'body'
+
+            # ---- Xử lý phần tử và gán vào vùng ----
+            if loai == 'paragraph':
+                ket_qua = self.xu_ly_doan_van(phan_tu)
+                if not ket_qua:
+                    continue
+
+                if self._vung_hien_tai == 'abstract':
+                    buf_abstract.append(ket_qua)
+                elif self._vung_hien_tai == 'keywords':
+                    buf_keywords.append(ket_qua)
+                else:  # body, pre_title (phần chưa nhận dạng → body)
+                    buf_body.append(ket_qua)
+
+            elif loai == 'table':
+                buf_body.append(self.dong_danh_sach_hien_tai())
+                ket_qua = self.xu_ly_bang(phan_tu)
+                if ket_qua:
+                    buf_body.append(ket_qua)
+
+        # Đóng danh sách nếu còn mở
+        buf_body.append(self.dong_danh_sach_hien_tai())
+
+        # Gán kết quả
+        self.parsed_data['title'] = ' '.join(title_parts).strip()
+        self.parsed_data['authors'] = buf_authors
+        self.parsed_data['abstract'] = ''.join(buf_abstract).strip()
+        self.parsed_data['keywords'] = ''.join(buf_keywords).strip()
+        self.parsed_data['body'] = ''.join(buf_body)
+
+    # ----- Regex helpers cho inject_into_template -----
+
+    def _tim_cap_ngoac(self, s: str, vi_tri_bat_dau: int) -> int:
+        """Tìm vị trí đóng ngoặc nhọn } khớp với { tại vi_tri_bat_dau.
+        Xử lý nested braces: \title{A {B} C} → trả về vị trí } cuối.
+        """
+        if vi_tri_bat_dau >= len(s) or s[vi_tri_bat_dau] != '{':
+            return -1
+        dem = 0
+        for i in range(vi_tri_bat_dau, len(s)):
+            if s[i] == '{' and (i == 0 or s[i-1] != '\\'):
+                dem += 1
+            elif s[i] == '}' and (i == 0 or s[i-1] != '\\'):
+                dem -= 1
+                if dem == 0:
+                    return i
+        return -1
+
+    def _thay_the_title(self, template: str) -> str:
+        """Thay thế \title{dummy} bằng nội dung title thật từ Word."""
+        title = self.parsed_data.get('title', '').strip()
+        if not title:
+            return template
+
+        # Tìm \title{ bằng regex, sau đó dùng brace matching
+        match = re.search(r'\\title\s*\{', template)
+        if not match:
+            return template
+
+        vi_tri_mo = match.end() - 1  # Vị trí ký tự '{'
+        vi_tri_dong = self._tim_cap_ngoac(template, vi_tri_mo)
+        if vi_tri_dong == -1:
+            return template
+
+        # Giữ nguyên phần sau title (ví dụ \thanks{...})
+        noi_dung_cu = template[vi_tri_mo + 1:vi_tri_dong]
+
+        # Nếu có \thanks{} bên trong, giữ lại
+        thanks_match = re.search(r'\\thanks\s*\{', noi_dung_cu)
+        phan_thanks = ''
+        if thanks_match:
+            thanks_start = thanks_match.start()
+            # Tìm } đóng của \thanks
+            vi_tri_thanks_mo = thanks_match.end() - 1
+            # Tìm trong noi_dung_cu
+            vi_tri_thanks_dong = self._tim_cap_ngoac(noi_dung_cu, vi_tri_thanks_mo)
+            if vi_tri_thanks_dong != -1:
+                phan_thanks = '\n' + noi_dung_cu[thanks_start:vi_tri_thanks_dong + 1]
+
+        noi_dung_moi = title + phan_thanks
+        template = template[:vi_tri_mo + 1] + noi_dung_moi + template[vi_tri_dong:]
+        return template
+
+    def _thay_the_abstract(self, template: str) -> str:
+        """Thay thế nội dung bên trong \begin{abstract}...\end{abstract}."""
+        abstract = self.parsed_data.get('abstract', '').strip()
+        if not abstract:
+            return template
+
+        pattern = r'(\\begin\{abstract\})(.*?)(\\end\{abstract\})'
+        match = re.search(pattern, template, re.DOTALL)
+        if match:
+            template = (
+                template[:match.start(2)]
+                + '\n' + abstract + '\n'
+                + template[match.end(2):]
+            )
+        return template
+
+    def _thay_the_keywords(self, template: str) -> str:
+        """Thay thế nội dung keywords trong IEEEkeywords hoặc dòng Keywords."""
+        keywords = self.parsed_data.get('keywords', '').strip()
+        if not keywords:
+            return template
+
+        # Thử \begin{IEEEkeywords}...\end{IEEEkeywords}
+        pattern_ieee = r'(\\begin\{IEEEkeywords\})(.*?)(\\end\{IEEEkeywords\})'
+        match = re.search(pattern_ieee, template, re.DOTALL)
+        if match:
+            template = (
+                template[:match.start(2)]
+                + '\n' + keywords + '\n'
+                + template[match.end(2):]
+            )
+            return template
+
+        # Thử \textbf{Keywords:} hoặc \textbf{Index Terms:}
+        pattern_kw = r'\\textbf\{(Keywords|Index Terms)\s*:?\}[^\n]*'
+        match = re.search(pattern_kw, template, re.IGNORECASE)
+        if match:
+            replacement = rf'\\textbf{{{match.group(1)}:}} {keywords}'
+            template = template[:match.start()] + replacement + template[match.end():]
+            return template
+
+        return template
+
+    def _thay_the_author(self, template: str) -> str:
+        """Thay thế \\author{...} trong template bằng author từ Word."""
+        authors = self.parsed_data.get('authors', [])
+        if not authors:
+            return template
+
+        # Tìm \\author{ và replace toàn bộ block (xử lý nested braces)
+        match = re.search(r'\\author\s*\{', template)
+        if not match:
+            return template
+
+        vi_tri_mo = match.end() - 1  # vị trí {
+        vi_tri_dong = self._tim_cap_ngoac(template, vi_tri_mo)
+        if vi_tri_dong == -1:
+            return template
+
+        # Xây dựng nội dung author mới
+        # Ghép tất cả author/affiliation thành dạng \\author{...}
+        noi_dung_author_parts = []
+        for i, info in enumerate(authors):
+            info_escaped = loc_ky_tu(info)
+            noi_dung_author_parts.append(info_escaped)
+
+        # Ghép lại: dùng \\\\ để xuống dòng giữa các phần (name, dept, org...)
+        noi_dung_author = ' \\\\\n'.join(noi_dung_author_parts)
+
+        # Thay thế toàn bộ \\author{...} cũ bằng \\author{...} mới
+        template = (
+            template[:match.start()]
+            + f'\\author{{{noi_dung_author}}}'
+            + template[vi_tri_dong + 1:]
+        )
+        return template
+
+    def _strip_latex_commands(self, text: str) -> str:
+        """Loại bỏ các lệnh LaTeX formatting để lấy plain text cho matching."""
+        # Loại bỏ \textbf{...}, \textit{...}, \textcolor[...]{...}{...}
+        result = text
+        result = re.sub(r'\\textcolor\[[^\]]*\]\{[^}]*\}\{([^}]*)\}', r'\1', result)
+        result = re.sub(r'\\textcolor\{[^}]*\}\{([^}]*)\}', r'\1', result)
+        result = re.sub(r'\\text(?:bf|it|rm|tt|sf|sc)\{([^}]*)\}', r'\1', result)
+        # Loại bỏ \href{...}{...}
+        result = re.sub(r'\\href\{[^}]*\}\{([^}]*)\}', r'\1', result)
+        # Loại bỏ các lệnh LaTeX đơn giản còn lại
+        result = re.sub(r'\\[a-zA-Z]+\*?\{([^}]*)\}', r'\1', result)
+        result = re.sub(r'\\[a-zA-Z]+\*?', '', result)
+        # Loại bỏ {} còn thừa
+        result = result.replace('{', '').replace('}', '')
+        return result.strip()
+
+    def _loc_metadata_word_thua(self, body: str) -> str:
+        r"""Lọc bỏ các đoạn metadata Word dư thừa ở đầu body.
+        Khi Word document có bảng layout chứa metadata (ARTICLE TITLE, Authors,
+        Abstract...), semantic parser phân loại tất cả thành body → trùng lặp
+        với template header. Hàm này strip các đoạn đó.
+
+        Chiến lược: tìm dòng \section*{...} đầu tiên — tất cả metadata nằm trước đó.
+        Nếu không tìm thấy \section*, dùng pattern matching để cắt metadata."""
+        cac_dong = body.split('\n')
+
+        # Chiến lược 1: tìm \section* đầu tiên — cắt tất cả trước đó
+        for i, dong in enumerate(cac_dong):
+            if re.match(r'\s*\\section\*?\{', dong.strip()):
+                if i > 0:
+                    return '\n'.join(cac_dong[i:])
+                return body
+
+        # Chiến lược 2 (fallback): dùng pattern matching trên plain text
+        cac_pattern_metadata = [
+            r'ARTICLE\s+TITLE',
+            r'ARTICLE\s+INFORMATION',
+            r'Full\s+Name\s+of\s+Author',
+            r'Affiliation\s+for\s+Author',
+            r'authors\s+have\s+contributed\s+equally',
+            r'ABSTRACT',
+            r'TOM\s+TAT|T[ÓO]M\s+T[AẮ]T',
+            r'Journal.*?ISSN',
+            r'ISSN:\s*\d',
+            r'Volume:\s*',
+            r'Issue:\s*',
+            r'Firstname',
+            r'Correspondence:',
+            r'Citation:',
+            r'DOI:',
+            r'OPEN\s+ACCESS',
+            r'Creative\s+Commons',
+            r'CC\s+BY',
+            r'Received:.*Accepted:',
+            r'Published:.*\d{4}',
+            r'BE\s+CONCISE.*SPECIFIC.*RELEVANT',
+            r'CAPITALIZED.*BOLD.*TIMES',
+            r'NOT\s+EXCEED\s+20\s+WORDS',
+            r'provided the original work',
+            r'permission of the author',
+            r'^\*\s*Note:',
+            r'abc@xyz',
+            r'keyword\s+\d',
+            r'tu\s+khoa\s+\d|t[ừu]\s+kh[oó]a\s+\d',
+        ]
+        combined_re = re.compile('|'.join(cac_pattern_metadata), re.IGNORECASE)
+        dong_bat_dau_noi_dung = 0
+
+        for i, dong in enumerate(cac_dong):
+            dong_strip = dong.strip()
+            if not dong_strip:
+                continue
+            # Strip LaTeX commands để lấy plain text trước khi matching
+            plain_text = self._strip_latex_commands(dong_strip)
+            if not plain_text:
+                dong_bat_dau_noi_dung = i + 1
+                continue
+            if combined_re.search(plain_text):
+                dong_bat_dau_noi_dung = i + 1
+                continue
+            # Gặp dòng nội dung thật → dừng
+            break
+
+        if dong_bat_dau_noi_dung > 0:
+            return '\n'.join(cac_dong[dong_bat_dau_noi_dung:])
+        return body
+
+    def _thay_the_body(self, template: str) -> str:
+        """Thay thế TOÀN BỘ dummy content trong template bằng body thật từ Word.
+
+        Chiến lược:
+        1. Tìm điểm BẮT ĐẦU: ngay sau \end{IEEEkeywords}, \end{abstract},
+           hoặc \maketitle (lấy vị trí xa nhất)
+        2. Tìm điểm KẾT THÚC: ngay trước \end{document} (luôn luôn)
+        3. Xóa TẤT CẢ dummy content giữa 2 điểm (body + References + bibliography
+           + red warning...), chèn body Word thay thế
+        """
+        body = self.parsed_data.get('body', '')
+        if not body.strip():
+            return template
+
+        # Lọc bỏ metadata Word dư thừa ở đầu body
+        body = self._loc_metadata_word_thua(body)
+
+        # Tìm điểm bắt đầu (ưu tiên cao → thấp)
+        diem_bat_dau = -1
+        cac_moc_bat_dau = [
+            r'\\end\{IEEEkeywords\}',
+            r'\\end\{abstract\}',
+            r'\\maketitle',
+        ]
+        for moc in cac_moc_bat_dau:
+            match = re.search(moc, template)
+            if match:
+                # Lấy vị trí xa nhất (sau cùng trong template)
+                if match.end() > diem_bat_dau:
+                    diem_bat_dau = match.end()
+
+        if diem_bat_dau == -1:
+            # Không tìm thấy mốc → fallback
+            return template
+
+        # Điểm kết thúc: LUÔN là \end{document} — xóa TẤT CẢ dummy content
+        match_end = re.search(r'\\end\{document\}', template)
+        if not match_end:
+            return template
+        diem_ket_thuc = match_end.start()
+
+        # Xây dựng template mới: giữ preamble + chèn body + \end{document}
+        template = (
+            template[:diem_bat_dau]
+            + '\n\n' + body + '\n\n'
+            + template[diem_ket_thuc:]
+        )
+        return template
+
+    def _template_co_cau_truc(self, template: str) -> bool:
+        """Kiểm tra template có cấu trúc ngữ nghĩa (title/abstract/maketitle)
+        hay chỉ là template đơn giản với %%CONTENT%%.
+        """
+        # Nếu template có \maketitle hoặc \title{ → cấu trúc IEEE/ACM
+        co_maketitle = '\\maketitle' in template
+        co_title_cmd = bool(re.search(r'\\title\s*\{', template))
+        co_abstract = '\\begin{abstract}' in template
+        # Template được coi là có cấu trúc nếu có ít nhất 1 trong 3 dấu hiệu
+        return co_maketitle or co_title_cmd or co_abstract
+
+    def inject_into_template(self, template: str) -> str:
+        """BƯỚC 2: Tiêm parsed_data vào template LaTeX có cấu trúc.
+
+        Thứ tự xử lý: title → abstract → keywords → body
+        Mỗi bước dùng regex helper riêng biệt, dễ debug.
+        """
+        ket_qua = template
+
+        # 1. Title
+        ket_qua = self._thay_the_title(ket_qua)
+
+        # 2. Author (thay thế example authors trong template)
+        ket_qua = self._thay_the_author(ket_qua)
+
+        # 3. Abstract
+        ket_qua = self._thay_the_abstract(ket_qua)
+
+        # 4. Keywords
+        ket_qua = self._thay_the_keywords(ket_qua)
+
+        # 4. Body (quan trọng nhất)
+        ket_qua = self._thay_the_body(ket_qua)
+
+        # 5. Fallback: nếu body injection thất bại, thử %%CONTENT%%
+        if '%%CONTENT%%' in ket_qua:
+            all_content = self.parsed_data.get('body', '')
+            ket_qua = ket_qua.replace('%%CONTENT%%', all_content)
+
+        return ket_qua
+
     def chuyen_doi(self):
-        # Thực hiện chuyển đổi: đọc Word → sinh nội dung → ghép template → ghi file
+        """Thực hiện chuyển đổi: đọc Word → phân loại → tiêm vào template → ghi file."""
         template = self.doc_template()
+
+        # Đảm bảo template có các package cần thiết
+        cac_goi_can_them = []
         if r"\usepackage{multirow}" not in template:
-            goi_multirow = "\\usepackage{multirow}\n\\usepackage{multicol}\n"
+            cac_goi_can_them.append(r"\usepackage{multirow}")
+            cac_goi_can_them.append(r"\usepackage{multicol}")
+        if r"\usepackage{float}" not in template:
+            cac_goi_can_them.append(r"\usepackage{float}")
+        if r"\usepackage{subcaption}" not in template and r"\usepackage{subfig}" not in template:
+            cac_goi_can_them.append(r"\usepackage{subcaption}")
+        if '{hyperref}' not in template:
+            cac_goi_can_them.append(r"\usepackage{hyperref}")
+            # Ẩn viền xanh quanh hyperlink trong PDF
+            cac_goi_can_them.append(r"\hypersetup{colorlinks=true,linkcolor=black,urlcolor=blue,citecolor=black}")
+        elif 'colorlinks' not in template and r"\hypersetup" not in template:
+            # Template đã có hyperref nhưng chưa cấu hình colorlinks
+            cac_goi_can_them.append(r"\hypersetup{colorlinks=true,linkcolor=black,urlcolor=blue,citecolor=black}")
+
+        if cac_goi_can_them:
+            goi_str = "\n".join(cac_goi_can_them) + "\n"
             if r"\begin{document}" in template:
-                template = template.replace(r"\begin{document}", goi_multirow + r"\begin{document}")
+                template = template.replace(r"\begin{document}", goi_str + r"\begin{document}")
             else:
-                template = template + "\n" + goi_multirow
-        noi_dung = self.sinh_noi_dung()
-        latex_cuoi = template.replace('%%CONTENT%%', noi_dung)
+                template = template + "\n" + goi_str
+
+        # Phân biệt: template có cấu trúc (IEEE/ACM) hay đơn giản (%%CONTENT%%)
+        co_cau_truc = self._template_co_cau_truc(template)
+
+        if co_cau_truc:
+            # --- Semantic Mapping Pipeline ---
+            self.phan_tich_ngu_nghia()            # BƯỚC 1: Bóc tách
+            latex_cuoi = self.inject_into_template(template)  # BƯỚC 2: Tiêm
+        else:
+            # --- Fallback: dùng %%CONTENT%% như cũ ---
+            noi_dung = self.sinh_noi_dung()
+            latex_cuoi = template.replace('%%CONTENT%%', noi_dung)
+
         with open(self.duong_dan_dau_ra, 'w', encoding='utf-8') as f:
             f.write(latex_cuoi)
 
 def main():
     # Hàm chính: thiết lập đường dẫn và chạy chuyển đổi
-    duong_dan_word = r"input_data/word_template(mau4).docx"
-    duong_dan_template = r"input_data/latex_template_onecolumn.tex"
-    duong_dan_dau_ra = r"output/word_template(mau4).tex"
-    thu_muc_anh = r"output/images"
+    duong_dan_word = 'input_data/acm_submission_template.docx'
+    duong_dan_template = 'input_data/latex_template_onecolumn.tex'
+    duong_dan_dau_ra = 'output/ket_qua_acm_ieee.tex'
+    thu_muc_anh = 'output/images'
     mode = 'demo'
 
     chuyen_doi = ChuyenDoiWordSangLatex(

@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  FileText, 
-  Download, 
-  RefreshCw, 
+import {
+  FileText,
+  Download,
+  RefreshCw,
   CheckCircle2,
   AlertCircle,
   Sparkles,
@@ -41,7 +41,7 @@ const TrangChuyenDoi = ({ nguoiDung }) => {
   const [tienTrinh, setTienTrinh] = useState(0)
   const [ketQuaChuyenDoi, setKetQuaChuyenDoi] = useState(null)
   const [thongBaoTienTrinh, setThongBaoTienTrinh] = useState('')
-  const [loaiTemplate, setLoaiTemplate] = useState('onecolumn')
+  const [loaiTemplate, setLoaiTemplate] = useState('ieee_conference')
   const [texContent, setTexContent] = useState('')
   const [jobId, setJobId] = useState('')
   const [hienThiMaLatex, setHienThiMaLatex] = useState(false)
@@ -126,7 +126,7 @@ const TrangChuyenDoi = ({ nguoiDung }) => {
     const kq = await xoaTemplate(templateId)
     if (kq.thanhCong) {
       toast.success('Đã xóa template')
-      if (loaiTemplate === templateId) setLoaiTemplate('onecolumn')
+      if (loaiTemplate === templateId) setLoaiTemplate('ieee_conference')
       const dsKq = await layDanhSachTemplate()
       if (dsKq.thanhCong) setDanhSachTemplate(dsKq.templates)
     } else {
@@ -168,9 +168,9 @@ const TrangChuyenDoi = ({ nguoiDung }) => {
       // Gọi API backend để chuyển đổi
       setThongBaoTienTrinh('Đang tải file lên...')
       setTienTrinh(20)
-      
+
       const ketQuaAPI = await chuyenDoiFile(fileChon, loaiTemplate)
-      
+
       if (!ketQuaAPI || !ketQuaAPI.thanhCong) {
         throw new Error(ketQuaAPI?.loiMessage || 'Lỗi khi chuyển đổi')
       }
@@ -178,9 +178,9 @@ const TrangChuyenDoi = ({ nguoiDung }) => {
       setIsUploading(false)
       setThongBaoTienTrinh('Hệ thống đang xử lý cấu trúc LaTeX...')
       setTienTrinh(60)
-      
+
       await new Promise(resolve => setTimeout(resolve, 500))
-      
+
       setThongBaoTienTrinh('Hoàn thành!')
       setTienTrinh(100)
 
@@ -261,8 +261,8 @@ const TrangChuyenDoi = ({ nguoiDung }) => {
 
   const itemVariants = {
     hidden: { opacity: 0, y: 20 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       y: 0,
       transition: { type: 'spring', stiffness: 100 }
     }
@@ -270,14 +270,14 @@ const TrangChuyenDoi = ({ nguoiDung }) => {
 
   return (
     <div className="min-h-screen bg-gradient-animated pt-20 pb-12 px-4">
-      <motion.div 
+      <motion.div
         className="max-w-3xl mx-auto"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
       >
         {/* Header */}
-        <motion.div 
+        <motion.div
           className="text-center mb-8"
           variants={itemVariants}
         >
@@ -293,7 +293,7 @@ const TrangChuyenDoi = ({ nguoiDung }) => {
             Chuyển đổi Word sang LaTeX
           </h1>
           <p className="text-white/60 max-w-xl mx-auto">
-            Upload file .docx và nhận file LaTeX (.tex) chuẩn học thuật 
+            Upload file .docx / .docm và nhận file LaTeX (.tex) chuẩn học thuật
             với đầy đủ công thức toán học, bảng biểu và hình ảnh.
           </p>
         </motion.div>
@@ -334,29 +334,37 @@ const TrangChuyenDoi = ({ nguoiDung }) => {
                           Quản lý
                         </button>
                       </div>
-                      
+
                       {/* Template buttons */}
                       <div className="flex flex-wrap items-center justify-center gap-2">
                         <button
-                          onClick={() => setLoaiTemplate('onecolumn')}
-                          className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-200 text-sm ${
-                            loaiTemplate === 'onecolumn' 
-                              ? 'bg-primary-500/30 border-primary-500 text-primary-300' 
+                          onClick={() => setLoaiTemplate('ieee_conference')}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-200 text-sm ${loaiTemplate === 'ieee_conference'
+                              ? 'bg-primary-500/30 border-primary-500 text-primary-300'
                               : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
-                          }`}
+                            }`}
                         >
-                          <AlignJustify className="w-4 h-4" />
-                          1 cột
+                          <FileCode className="w-4 h-4" />
+                          IEEE Conference (2 cột)
+                        </button>
+                        <button
+                          onClick={() => setLoaiTemplate('onecolumn')}
+                          className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-200 text-sm ${loaiTemplate === 'onecolumn'
+                              ? 'bg-primary-500/30 border-primary-500 text-primary-300'
+                              : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
+                            }`}
+                        >
+                          <FileCode className="w-4 h-4" />
+                          Article (1 cột)
                         </button>
                         {danhSachTemplate.filter(t => t.loai === 'tuy_chinh').map(t => (
                           <button
                             key={t.id}
                             onClick={() => setLoaiTemplate(t.id)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-200 text-sm ${
-                              loaiTemplate === t.id 
-                                ? 'bg-purple-500/30 border-purple-500 text-purple-300' 
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg border transition-all duration-200 text-sm ${loaiTemplate === t.id
+                                ? 'bg-purple-500/30 border-purple-500 text-purple-300'
                                 : 'bg-white/5 border-white/10 text-white/50 hover:bg-white/10'
-                            }`}
+                              }`}
                           >
                             <FileCode className="w-4 h-4" />
                             {t.ten}
@@ -419,7 +427,7 @@ const TrangChuyenDoi = ({ nguoiDung }) => {
                     </div>
 
                     <div className="flex justify-center">
-                      <NutBam 
+                      <NutBam
                         onClick={xuLyChuyenDoi}
                         icon={Zap}
                         kichThuoc="lg"
@@ -441,9 +449,9 @@ const TrangChuyenDoi = ({ nguoiDung }) => {
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="flex justify-center"
               >
-                <LoadingXuLy 
-                  tienTrinh={tienTrinh} 
-                  thongBao={thongBaoTienTrinh || 'Đang xử lý...'} 
+                <LoadingXuLy
+                  tienTrinh={tienTrinh}
+                  thongBao={thongBaoTienTrinh || 'Đang xử lý...'}
                   chiTiet={fileChon?.name}
                 />
               </motion.div>
@@ -517,7 +525,7 @@ const TrangChuyenDoi = ({ nguoiDung }) => {
 
                 {/* Actions */}
                 <div className="flex flex-col sm:flex-row gap-3">
-                  <NutBam 
+                  <NutBam
                     onClick={xuLyTaiVe}
                     icon={Download}
                     className="flex-1"
@@ -525,7 +533,7 @@ const TrangChuyenDoi = ({ nguoiDung }) => {
                   >
                     Tải xuống (.zip)
                   </NutBam>
-                  <NutBam 
+                  <NutBam
                     onClick={() => setHienThiMaLatex(true)}
                     bienThe="secondary"
                     icon={Eye}
@@ -534,7 +542,7 @@ const TrangChuyenDoi = ({ nguoiDung }) => {
                   >
                     Xem mã LaTeX
                   </NutBam>
-                  <NutBam 
+                  <NutBam
                     onClick={xuLyChuyenDoiMoi}
                     bienThe="secondary"
                     icon={RefreshCw}
@@ -613,7 +621,7 @@ const TrangChuyenDoi = ({ nguoiDung }) => {
                 <p className="text-white/60 mb-6">
                   Không thể chuyển đổi file. Vui lòng thử lại hoặc kiểm tra định dạng file.
                 </p>
-                <NutBam 
+                <NutBam
                   onClick={xuLyChuyenDoiMoi}
                   icon={RefreshCw}
                 >
@@ -625,7 +633,7 @@ const TrangChuyenDoi = ({ nguoiDung }) => {
         </motion.div>
 
         {/* Features */}
-        <motion.div 
+        <motion.div
           className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-4"
           variants={itemVariants}
         >

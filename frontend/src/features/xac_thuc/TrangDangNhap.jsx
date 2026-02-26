@@ -1,24 +1,25 @@
 // TrangDangNhap.jsx - Trang đăng nhập với giao diện Glassmorphism
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  FileText, 
-  Mail, 
-  Lock, 
-  Eye, 
-  EyeOff, 
-  ArrowRight, 
+import {
+  FileText,
+  Mail,
+  Lock,
+  Eye,
+  EyeOff,
+  ArrowRight,
   Sparkles,
   Github,
   Loader2
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { 
-  dangNhapVoiGoogle, 
-  dangNhapVoiEmail, 
-  dangKyVoiEmail 
+import {
+  dangNhapVoiGoogle,
+  layKetQuaRedirect,
+  dangNhapVoiEmail,
+  dangKyVoiEmail
 } from '../../services/firebaseConfig'
 
 const TrangDangNhap = () => {
@@ -39,30 +40,32 @@ const TrangDangNhap = () => {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
+  // Kiểm tra kết quả redirect khi trang load (sau khi Google redirect về)
+  useEffect(() => {
+    const kiemTraRedirect = async () => {
+      try {
+        const ketQua = await layKetQuaRedirect()
+        if (ketQua.thanhCong && ketQua.nguoiDung) {
+          toast.success(`Chào mừng ${ketQua.nguoiDung.displayName || 'bạn'}!`)
+          navigate('/chuyen-doi')
+        } else if (ketQua.loiMessage) {
+          toast.error(ketQua.loiMessage)
+        }
+      } catch (loi) {
+        // Không có redirect result là bình thường
+      }
+    }
+    kiemTraRedirect()
+  }, [navigate])
+
   const xuLyDangNhapGoogle = async () => {
-    // Xử lý đăng nhập bằng Google
+    // Xử lý đăng nhập bằng Google (redirect flow - tránh COOP)
     setDangXuLy(true)
     try {
-      const ketQua = await dangNhapVoiGoogle()
-      if (ketQua.thanhCong) {
-        toast.success(`Chào mừng ${ketQua.nguoiDung.displayName || 'bạn'}!`)
-        navigate('/chuyen-doi')
-      } else {
-        const msg = ketQua.loiMessage || 'Đăng nhập thất bại'
-        if (msg.toLowerCase().includes('bị hủy')) {
-          toast.error('Đăng nhập đã bị hủy')
-        } else {
-          toast.error(msg)
-        }
-      }
+      await dangNhapVoiGoogle()
+      // Trang sẽ redirect sang Google, không cần xử lý tiếp
     } catch (loi) {
-      const maLoi = loi?.code || ''
-      if (maLoi === 'auth/popup-closed-by-user' || maLoi === 'auth/cancelled-popup-request') {
-        toast.error('Đăng nhập đã bị hủy')
-        return
-      }
       toast.error('Không thể kết nối đến Google')
-    } finally {
       setDangXuLy(false)
     }
   }
@@ -70,7 +73,7 @@ const TrangDangNhap = () => {
   const xuLyGuiForm = async (e) => {
     // Xử lý submit form đăng nhập hoặc đăng ký
     e.preventDefault()
-    
+
     if (!formData.email || !formData.matKhau) {
       toast.error('Vui lòng điền đầy đủ thông tin')
       return
@@ -120,8 +123,8 @@ const TrangDangNhap = () => {
 
   const itemVariants = {
     hidden: { opacity: 0, y: 30 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       y: 0,
       transition: { type: 'spring', stiffness: 100, damping: 12 }
     }
@@ -129,13 +132,13 @@ const TrangDangNhap = () => {
 
   const formVariants = {
     hidden: { opacity: 0, x: 20 },
-    visible: { 
-      opacity: 1, 
+    visible: {
+      opacity: 1,
       x: 0,
       transition: { type: 'spring', stiffness: 100, damping: 15 }
     },
-    exit: { 
-      opacity: 0, 
+    exit: {
+      opacity: 0,
       x: -20,
       transition: { duration: 0.2 }
     }
@@ -182,7 +185,7 @@ const TrangDangNhap = () => {
         animate="visible"
       >
         {/* Logo và tiêu đề */}
-        <motion.div 
+        <motion.div
           className="text-center mb-8"
           variants={itemVariants}
         >
@@ -210,21 +213,19 @@ const TrangDangNhap = () => {
           <div className="flex bg-white/5 rounded-xl p-1 mb-6">
             <button
               onClick={() => setCheDoForm('dangNhap')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 ${
-                cheDoForm === 'dangNhap'
+              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 ${cheDoForm === 'dangNhap'
                   ? 'bg-primary-600 text-white shadow-lg'
                   : 'text-white/60 hover:text-white'
-              }`}
+                }`}
             >
               Đăng nhập
             </button>
             <button
               onClick={() => setCheDoForm('dangKy')}
-              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 ${
-                cheDoForm === 'dangKy'
+              className={`flex-1 py-2.5 rounded-lg text-sm font-medium transition-all duration-300 ${cheDoForm === 'dangKy'
                   ? 'bg-primary-600 text-white shadow-lg'
                   : 'text-white/60 hover:text-white'
-              }`}
+                }`}
             >
               Đăng ký
             </button>
@@ -398,9 +399,9 @@ const TrangDangNhap = () => {
             <span>•</span>
             <a href="#" className="hover:text-white/50 transition-colors">Điều khoản</a>
             <span>•</span>
-            <a 
-              href="https://github.com" 
-              target="_blank" 
+            <a
+              href="https://github.com"
+              target="_blank"
               rel="noopener noreferrer"
               className="hover:text-white/50 transition-colors inline-flex items-center gap-1"
             >

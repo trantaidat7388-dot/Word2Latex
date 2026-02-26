@@ -30,7 +30,9 @@ if not cors_origins:
     cors_origins = [
         "http://localhost:3000",
         "http://localhost:3001",
+        "http://localhost:3002",
         "http://localhost:5173",
+        "http://localhost:5174",
     ]
 
 app.add_middleware(
@@ -130,7 +132,7 @@ def doc_api():
     return {
         "message": "Word2LaTeX API đang hoạt động",
         "endpoints": {
-            "/api/chuyen-doi": "POST - Upload file .docx và chuyển đổi",
+        "/api/chuyen-doi": "POST - Upload file .docx/.docm và chuyển đổi",
             "/docs": "Xem Swagger documentation"
         }
     }
@@ -142,8 +144,11 @@ def lay_danh_sach_template():
     templates = []
     
     # Templates mặc định
-    for name, label in [("onecolumn", "1 cột (mặc định)")]:
-        tpl_path = template_folder / f"latex_template_{name}.tex"
+    for name, label, filename in [
+        ("ieee_conference", "IEEE Conference (2 cột)", "IEEE-conference-template-062824.tex"),
+        ("onecolumn", "Article (1 cột)", "latex_template_onecolumn.tex"),
+    ]:
+        tpl_path = template_folder / filename
         if tpl_path.exists():
             templates.append({
                 "id": name,
@@ -218,15 +223,16 @@ def xoa_template(template_id: str):
 async def chuyen_doi_file(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
-    template_type: str = Query("onecolumn", description="onecolumn hoặc custom_xxx")
+    template_type: str = Query("ieee_conference", description="ieee_conference hoặc custom_xxx")
 ):
     # Endpoint chuyển đổi file Word → LaTeX
     
-    # Kiểm tra file extension
-    if not file.filename.endswith('.docx'):
+    # Kiểm tra file extension — chấp nhận .docx và .docm
+    ten_file = file.filename.lower()
+    if not (ten_file.endswith('.docx') or ten_file.endswith('.docm')):
         raise HTTPException(
             status_code=400, 
-            detail="Chỉ chấp nhận file .docx"
+            detail="Chỉ chấp nhận file .docx hoặc .docm"
         )
     
     # Kiểm tra kích thước file (max 10MB)
@@ -248,7 +254,9 @@ async def chuyen_doi_file(
     
     job_folder = temp_folder / f"job_{job_id}"
     job_folder.mkdir(parents=True, exist_ok=True)
-    input_filename = f"{safe_name}_{timestamp}.docx"
+    # Giữ đuôi file gốc (.docx hoặc .docm)
+    file_ext = Path(file.filename).suffix.lower() or '.docx'
+    input_filename = f"{safe_name}_{timestamp}{file_ext}"
     input_path = job_folder / input_filename
     output_filename = f"{safe_name}_{timestamp}.tex"
     output_path = job_folder / output_filename
@@ -259,14 +267,20 @@ async def chuyen_doi_file(
         f.write(contents)
     
     # Chọn template (mặc định hoặc custom)
-    if template_type == "twocolumn":
-        template_type = "onecolumn"
+    TEMPLATE_MAP = {
+        "ieee_conference": "IEEE-conference-template-062824.tex",
+        "twocolumn": "IEEE-conference-template-062824.tex",
+        "onecolumn": "latex_template_onecolumn.tex",
+    }
 
     if template_type.startswith("custom_"):
         custom_name = template_type.replace("custom_", "", 1)
         template_path = custom_template_folder / f"{custom_name}.tex"
+    elif template_type in TEMPLATE_MAP:
+        template_path = template_folder / TEMPLATE_MAP[template_type]
     else:
-        template_path = template_folder / "latex_template_onecolumn.tex"
+        # Mặc định: sử dụng IEEE Conference template
+        template_path = template_folder / "IEEE-conference-template-062824.tex"
     
     if not template_path.exists():
         raise HTTPException(
@@ -353,6 +367,12 @@ async def chuyen_doi_file(
 
         da_thanh_cong = True
         background_tasks.add_task(chay_don_dep_sau_15_phut, job_folder)
+
+        # Lưu copy vào thư mục outputs để người dùng dễ theo dõi
+        try:
+            shutil.copy2(zip_path, outputs_folder / zip_filename)
+        except Exception as e:
+            in_log_loi(f"Không thể copy kết quả vào outputs job_id={job_id}", e)
 
         return JSONResponse(status_code=200, content={
             "thanh_cong": True,

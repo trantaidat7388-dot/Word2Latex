@@ -21,7 +21,9 @@ WP14_NAMESPACE = 'http://schemas.microsoft.com/office/word/2010/wordprocessingDr
 REL_NAMESPACE = 'http://schemas.openxmlformats.org/officeDocument/2006/relationships'
 
 # STYLE MAPPING: Word Style → LaTeX Command
+# Hỗ trợ cả style chuẩn Word và style ACM Word template
 MAP_STYLE = {
+    # --- Style chuẩn Word ---
     'Heading 1': r'\section',
     'Heading 2': r'\subsection',
     'Heading 3': r'\subsubsection',
@@ -29,14 +31,62 @@ MAP_STYLE = {
     'Title': r'\title',
     'Subtitle': r'\subtitle',
     'TOC Heading': None,  # Bỏ qua
+
+    # --- Style ACM Word template ---
+    'Head1': r'\section',
+    'Head2': r'\subsection',
+    'Head3': r'\subsubsection',
+    'Title_document': r'\title',
+    'Short Title': None,       # Bỏ qua (metadata)
+    'Authors': r'\author',
+    'Affiliation': r'\affil',
+    'AuthNotes': None,         # Bỏ qua (footnote tác giả)
+    'Abstract': r'\abstract',
+    'Keywords': None,          # Xử lý riêng
+    'KeyWordHead': None,       # Bỏ qua heading "Keywords"
+    'CCSHead': None,           # Bỏ qua heading "CCS Concepts"
+    'CCSDescription': None,    # Bỏ qua CCS terms
+    'ReferenceHead': r'\section',
+    'AckHead': r'\section',
+    'AckPara': '',             # Đoạn acknowledgement → text thường
+    'PostHeadPara': '',        # Đoạn đầu sau heading → text thường
+    'TableCaption': '',          # Xuất bold text (caption bảng xử lý riêng trong xu_ly_bang)
+    'FigureCaption': '',         # Caption hình (xử lý riêng trong bat_caption_hinh)
+    'Bib_entry': 'bibitem',    # Reference entries → \bibitem
+    'ORCID': None,             # Bỏ qua
+    'DOI': None,               # Bỏ qua
+    'History': None,           # Bỏ qua dates
+    'AppendixH1': r'\section',
+    'AppendixH2': r'\subsection',
+    'AppendixH3': r'\subsubsection',
+    'GrandSponsor': None,
+    'GrantSponsor': None,
+    'GrantNumber': None,
+
+    # --- Styles toán (ACM) ---
+    'DisplayFormula': 'equation',           # Công thức có đánh số
+    'DisplayFormulaUnnum': 'equation*',     # Công thức không đánh số
+
+    # --- Styles đặc biệt khác ---
+    'Extract': '',             # Block quotation → text thường
+    'Statements': '',          # Math statement → text thường
+    'Algorithm': '',           # Algorithm lines → text thường
+    'AlgorithmCaption': '',    # Algorithm caption → text thường
+    'ComputerCode': 'verbatim',# Computer code → verbatim
+    'ACMRefHead': None,        # Bỏ qua ACM Reference Format heading
+    'ACMRef': None,            # Bỏ qua ACM Reference Format content
+    'TableFootnote': '',       # Table footnote → text thường
 }
 
-# HEADING PATTERNS: Phát hiện heading tiếng Việt từ nội dung
+# HEADING PATTERNS: Phát hiện heading từ nội dung (khi Word không gán style)
 HEADING_PATTERNS = [
+    # --- Heading tiếng Việt ---
     (r'^(CHƯƠNG|CHAPTER)\s*(\d+|[IVXLC]+)[\.::]?\s*(.+)$', r'\section*'),
     (r'^(\d+)\.(\d+)\.(\d+)\.?\s*(.+)$', r'\subsubsection*'),   # 1.1.1. hoặc 1.1.1tiêu đề
     (r'^(\d+)\.(\d+)\.?\s*([A-ZÀ-Ỹ].+)$', r'\subsection*'),     # 1.1. hoặc 1.1tiêu đề
     (r'^(\d+)\.\s+([A-ZÀ-Ỹ][a-zA-ZÀ-ỹ\s]{10,})$', r'\section*'), # 1. Tiêu đề dài >10 ký tự
+    # --- Heading tiếng Anh (ALL CAPS, thường gặp trong ACM/IEEE) ---
+    (r'^(INTRODUCTION|ABSTRACT|CONCLUSION|CONCLUSIONS|REFERENCES|ACKNOWLEDGMENTS|ACKNOWLEDGEMENTS|RELATED WORK|METHODOLOGY|RESULTS|DISCUSSION|BACKGROUND|EVALUATION|APPENDIX|APPENDICES)$', r'\section*'),
 ]
 
 # OMML → LaTeX: Bảng ký tự Unicode → LaTeX command
