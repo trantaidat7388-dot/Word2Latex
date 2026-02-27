@@ -768,7 +768,8 @@ def extract_mtef_from_ole(ole_binary: bytes) -> bytes | None:
             ole.close()
             return mtef_data
         ole.close()
-    except Exception:
+    except Exception as e:
+        print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_ole_equation.py dòng 771: {e}')
         pass
     return None
 

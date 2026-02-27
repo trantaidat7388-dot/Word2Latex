@@ -271,6 +271,8 @@ async def chuyen_doi_file(
         "ieee_conference": "IEEE-conference-template-062824.tex",
         "twocolumn": "IEEE-conference-template-062824.tex",
         "onecolumn": "latex_template_onecolumn.tex",
+        "elsarticle": "elsarticle-template-harv.tex",
+        "springer_lncs": "splnproc1110.tex"
     }
 
     if template_type.startswith("custom_"):

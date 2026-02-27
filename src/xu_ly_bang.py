@@ -75,7 +75,8 @@ class BoXuLyBang:
                     and dem_so_trang_cuoi > so_hang_kiem_tra * 0.5
                     and dem_cau_truc_muc >= 3):
                 return True
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_bang.py dòng 78: {e}')
             pass
         return False
 
@@ -126,7 +127,8 @@ class BoXuLyBang:
                     return True
                 if so_cell_co_anh / tong_cell >= 0.3:
                     return True
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_bang.py dòng 129: {e}')
             pass
         return False
 
@@ -162,7 +164,8 @@ class BoXuLyBang:
             dem_tu_khoa = sum(1 for tu in tu_khoa_layout if tu in toan_bo_text)
             if dem_tu_khoa >= 3:
                 return True
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_bang.py dòng 165: {e}')
             pass
         return False
 
@@ -185,7 +188,8 @@ class BoXuLyBang:
                 if k in text_dau:
                     return True
             return False
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_bang.py dòng 188: {e}')
             return False
 
     def tao_latex_minipage_metadata(self, bang: Table) -> str:
@@ -218,7 +222,8 @@ class BoXuLyBang:
             latex.append(r"\vspace{0.5cm}")
 
             return "\n".join(latex)
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_bang.py dòng 221: {e}')
             return ""
 
     def la_bang_tieu_su(self, bang: Table) -> bool:
@@ -239,7 +244,8 @@ class BoXuLyBang:
 
             text_len = len(bang.rows[0].cells[0].text) + len(bang.rows[0].cells[1].text)
             return co_anh and text_len > 50
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_bang.py dòng 242: {e}')
             return False
 
     def trich_xuat_anh_trong_cell(self, cell) -> list:
@@ -289,7 +295,8 @@ class BoXuLyBang:
                 latex.append(r"\vspace{0.3cm}")
 
             return "\n".join(latex)
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_bang.py dòng 292: {e}')
             return ""
 
     def xu_ly_doan_van_trong_cell(self, cell, che_do_inline: bool = True) -> str:
@@ -316,7 +323,8 @@ class BoXuLyBang:
 
             if len(bang.rows) > 0 and dem_so_thu_tu / len(bang.rows) >= 0.5:
                 return True
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_bang.py dòng 319: {e}')
             pass
         return False
 
@@ -337,7 +345,8 @@ class BoXuLyBang:
                             if noi_dung_clean and noi_dung_clean not in da_xuat_para:
                                 da_xuat_para.add(noi_dung_clean)
                                 ket_qua.append(noi_dung + "\n\n")
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_bang.py dòng 340: {e}')
             pass
         return ''.join(ket_qua)
 
@@ -366,7 +375,8 @@ class BoXuLyBang:
                                         if latex_from_mtef.strip():
                                             cong_thuc_parts.append(latex_from_mtef)
                                             continue
-                                    except Exception:
+                                    except Exception as e:
+                                        print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_bang.py dòng 369: {e}')
                                         pass
 
                             imagedata = obj.find(f'.//{{{VML_NAMESPACE}}}imagedata')
@@ -404,7 +414,8 @@ class BoXuLyBang:
                                                 img_resized = img.resize(new_size, Image.LANCZOS)
                                                 img_resized.save(duong_dan_png)
                                                 os.remove(duong_dan_anh)
-                                            except Exception:
+                                            except Exception as e:
+                                                print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_bang.py dòng 407: {e}')
                                                 pass
 
                                         ten_thu_muc = os.path.basename(self.bo_chuyen.thu_muc_anh)
@@ -421,7 +432,8 @@ class BoXuLyBang:
                 cell_text = cell.text.strip()
                 if cell_text:
                     cong_thuc_parts.append(loc_ky_tu(cell_text))
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_bang.py dòng 424: {e}')
             pass
         return ' '.join(cong_thuc_parts)
 
@@ -444,7 +456,8 @@ class BoXuLyBang:
                             latex += f"  \\text{{[Công thức {so}]}}\n"
                         latex += rf"  \tag{{{so}}}" + "\n"
                         latex += r"\end{equation}" + "\n\n"
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_bang.py dòng 447: {e}')
             pass
         return latex
 
@@ -499,7 +512,8 @@ class BoXuLyBang:
                         if mo_ta:
                             caption += f" {mo_ta}"
                         danh_sach.append(loc_ky_tu(caption))
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_bang.py dòng 502: {e}')
             pass
         return danh_sach
 
@@ -516,7 +530,8 @@ class BoXuLyBang:
             if val is None:
                 return 1
             return max(1, int(val))
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_bang.py dòng 519: {e}')
             return 1
 
     def _lay_vmerge(self, tc):
@@ -532,7 +547,8 @@ class BoXuLyBang:
             if val is None:
                 return 'continue'
             return str(val)
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_bang.py dòng 535: {e}')
             return None
 
     def _xay_dung_luoi_o(self, bang: Table):
@@ -545,7 +561,8 @@ class BoXuLyBang:
         try:
             grid_cols = tbl.tblGrid.gridCol_lst
             so_cot = len(grid_cols)
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_bang.py dòng 548: {e}')
             so_cot = 0
 
         if so_cot <= 0:
@@ -615,12 +632,22 @@ class BoXuLyBang:
         # Render bảng dữ liệu sang tabular có hỗ trợ \multirow/\multicolumn
         luoi, meta, rowspan_map, so_cot, so_hang = self._xay_dung_luoi_o(bang)
 
-        cot = '|' + '|'.join(['p{2cm}'] * so_cot) + '|'
+        # Phân bố độ rộng cột theo tỉ lệ \linewidth để đảm bảo không bị tràn trang (hỗ trợ two-column)
+        if so_cot > 0:
+            width_frac = 0.98 / so_cot
+        else:
+            width_frac = 0.15
+        
+        # Bỏ kẻ sọc dọc '|' theo chuẩn booktabs
+        # Sửa lại: Dùng đường kẻ dọc và ngang tiêu chuẩn (giống Word)
+        cot = '|' + '|'.join([f"p{{{width_frac:.3f}\\linewidth}}" for _ in range(so_cot)]) + '|'
         vi_tri = "[H]" if self.bo_chuyen.mode == 'demo' else "[htbp]"
 
         latex = rf"\begin{{table}}{vi_tri}" + "\n"
         latex += r"  \centering" + "\n"
         latex += rf"  \begin{{tabular}}{{{cot}}}" + "\n"
+        
+        # Dùng \hline thay vì \toprule
         latex += r"  \hline" + "\n"
 
         for r in range(so_hang):
@@ -649,13 +676,13 @@ class BoXuLyBang:
 
                 # Lấy text cell qua python-docx bằng mapping vị trí
                 try:
-                    # Tìm cell object gần nhất từ bang.rows[r].cells theo c (không hoàn hảo nhưng ổn cho text)
                     cell_obj = bang.rows[r].cells[0]
                     for candidate in bang.rows[r].cells:
                         if id(candidate._tc) == id(info['tc']):
                             cell_obj = candidate
                             break
-                except Exception:
+                except Exception as e:
+                    print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_bang.py dòng 667: {e}')
                     cell_obj = None
 
                 noi_dung = ""
@@ -669,11 +696,11 @@ class BoXuLyBang:
                     token = rf"\multirow{{{rowspan}}}{{*}}{{{token}}}"
 
                 if colspan > 1:
-                    do_rong_cm = max(2, 2 * colspan)
-                    token = rf"\multicolumn{{{colspan}}}{{|p{{{do_rong_cm}cm}}|}}{{{token}}}"
+                    mc_width = colspan * width_frac
+                    token = rf"\multicolumn{{{colspan}}}{{p{{{mc_width:.3f}\linewidth}}}}{{{token}}}"
 
                 cells_out.append(token)
-                # Skip các cột đã bị gộp bởi multicolumn (không thêm empty &)
+                # Skip các cột đã bị gộp bởi multicolumn
                 c += colspan
 
             # Loại bỏ trailing empty cells do skip colspan
@@ -682,7 +709,7 @@ class BoXuLyBang:
             # Đảm bảo đủ số cột (nếu thiếu thì thêm empty)
             while len(cells_out) < so_cot:
                 cells_out.append('')
-            # Loại bỏ empty cell SAU multicolumn (đã gộp)
+            
             # Build dòng chỉ với cells thực sự
             dong_filtered = []
             skip = 0
@@ -697,8 +724,9 @@ class BoXuLyBang:
                     skip = int(mc_match.group(1)) - 1
 
             latex += "    " + " & ".join(dong_filtered) + r" \\" + "\n"
+            
+            # Dùng \hline cho mỗi dòng để giống word
             latex += r"  \hline" + "\n"
-
         latex += r"  \end{tabular}" + "\n"
         caption_bang = self.bo_chuyen.bat_caption_bang()
         caption_final = caption_bang or ""

@@ -27,8 +27,6 @@ import { db, auth } from '../../services/firebaseConfig'
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore'
 import { chuyenDoiFile, taiFileZip, layDanhSachTemplate, taiLenTemplate, xoaTemplate } from '../../services/api'
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-
 const TrangChuyenDoi = ({ nguoiDung }) => {
   // Trang chính xử lý upload file và hiển thị tiến trình chuyển đổi
   const [fileChon, setFileChon] = useState(null)

@@ -63,6 +63,19 @@ MAP_STYLE = {
     'GrantSponsor': None,
     'GrantNumber': None,
 
+    # --- Style SPLNPROC (Springer LNCS) ---
+    'papertitle': r'\title',
+    'author': r'\author',
+    'address': r'\affil',
+    'abstract': r'\abstract',
+    'keywords': None,
+    'heading1': r'\section',
+    'heading2': r'\subsection',
+    'equation': 'equation',
+    'figurecaption': '',
+    'tablecaption': '',
+    'referenceitem': 'bibitem',
+
     # --- Styles toán (ACM) ---
     'DisplayFormula': 'equation',           # Công thức có đánh số
     'DisplayFormulaUnnum': 'equation*',     # Công thức không đánh số

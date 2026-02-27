@@ -10,10 +10,13 @@ class BoLocAnh:
     # PHÂN TÍCH ẢNH ĐƠN LẺ
 
     @staticmethod
-    def tinh_entropy_anh(duong_dan_anh) -> float:
+    def tinh_entropy_anh(duong_dan_hoac_anh) -> float:
         # Tính entropy (Shannon) đo độ hỗn loạn màu: trang trí <3.5, nội dung >5.0
         try:
-            im = Image.open(duong_dan_anh)
+            if isinstance(duong_dan_hoac_anh, str):
+                im = Image.open(duong_dan_hoac_anh)
+            else:
+                im = duong_dan_hoac_anh
             histogram = im.histogram()
             histogram_length = sum(histogram)
             if histogram_length == 0:
@@ -21,26 +24,34 @@ class BoLocAnh:
             samples_probability = [float(h) / histogram_length for h in histogram]
             entropy = -sum([p * math.log(p, 2) for p in samples_probability if p != 0])
             return entropy
-        except Exception:
+        except Exception as e:
+            print(f"[Cảnh báo] Lỗi tinh_entropy_anh: {e}")
             return 0
 
     @staticmethod
-    def tinh_so_mau_anh(duong_dan_anh) -> int:
+    def tinh_so_mau_anh(duong_dan_hoac_anh) -> int:
         # Đếm số màu duy nhất: logo ít màu (<50), photo nhiều màu (>1000)
         try:
-            im = Image.open(duong_dan_anh)
+            if isinstance(duong_dan_hoac_anh, str):
+                im = Image.open(duong_dan_hoac_anh)
+            else:
+                im = duong_dan_hoac_anh
             colors = im.getcolors(maxcolors=100000)
             if colors is None:
                 return 100000
             return len(colors)
-        except Exception:
+        except Exception as e:
+            print(f"[Cảnh báo] Lỗi tinh_so_mau_anh: {e}")
             return 0
 
     @staticmethod
-    def tinh_do_phuc_tap_anh(duong_dan_anh) -> dict:
+    def tinh_do_phuc_tap_anh(duong_dan_hoac_anh) -> dict:
         # Phát hiện cạnh (Edge Detection) và đo độ biến thiên (variance)
         try:
-            im = Image.open(duong_dan_anh).convert('L')
+            if isinstance(duong_dan_hoac_anh, str):
+                im = Image.open(duong_dan_hoac_anh).convert('L')
+            else:
+                im = duong_dan_hoac_anh.convert('L')
             edges = im.filter(ImageFilter.FIND_EDGES)
             edge_stat = ImageStat.Stat(edges)
             edge_mean = edge_stat.mean[0]
@@ -54,14 +65,18 @@ class BoLocAnh:
                 'edge_stddev': edge_stddev,
                 'variance': variance,
             }
-        except Exception:
+        except Exception as e:
+            print(f"[Cảnh báo] Lỗi tinh_do_phuc_tap_anh: {e}")
             return {'edge_mean': 0, 'edge_stddev': 0, 'variance': 0}
 
     @staticmethod
-    def phan_tich_histogram(duong_dan_anh) -> dict:
+    def phan_tich_histogram(duong_dan_hoac_anh) -> dict:
         # Phân tích histogram: logo ít peaks + dominant cao, photo ngược lại
         try:
-            im = Image.open(duong_dan_anh).convert('L')
+            if isinstance(duong_dan_hoac_anh, str):
+                im = Image.open(duong_dan_hoac_anh).convert('L')
+            else:
+                im = duong_dan_hoac_anh.convert('L')
             histogram = im.histogram()
             total = sum(histogram)
             if total == 0:
@@ -78,18 +93,29 @@ class BoLocAnh:
             dominant_ratio = sum(sorted_hist[:5]) / total
 
             return {'num_peaks': peaks, 'dominant_ratio': dominant_ratio}
-        except Exception:
+        except Exception as e:
+            print(f"[Cảnh báo] Lỗi phan_tich_histogram: {e}")
             return {'num_peaks': 0, 'dominant_ratio': 1.0}
 
     # SCORING SYSTEM
 
     @classmethod
-    def la_anh_noi_dung(cls, duong_dan_anh) -> bool:
+    def la_anh_noi_dung(cls, duong_dan_hoac_anh) -> bool:
         # Tổng hợp điểm từ các tiêu chí: >= 4 = nội dung, < 4 = trang trí (max 12)
-        entropy = cls.tinh_entropy_anh(duong_dan_anh)
-        so_mau = cls.tinh_so_mau_anh(duong_dan_anh)
-        do_phuc_tap = cls.tinh_do_phuc_tap_anh(duong_dan_anh)
-        hist_info = cls.phan_tich_histogram(duong_dan_anh)
+        try:
+            if isinstance(duong_dan_hoac_anh, str):
+                im = Image.open(duong_dan_hoac_anh)
+            else:
+                im = duong_dan_hoac_anh
+                
+            entropy = cls.tinh_entropy_anh(im)
+            so_mau = cls.tinh_so_mau_anh(im)
+            do_phuc_tap = cls.tinh_do_phuc_tap_anh(im)
+            hist_info = cls.phan_tich_histogram(im)
+
+        except Exception as e:
+            print(f"[Cảnh báo] Lỗi la_anh_noi_dung quá trình tính toán tính năng: {e}")
+            return False
 
         diem = 0
 

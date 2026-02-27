@@ -55,7 +55,8 @@ class BoXuLyToan:
         try:
             xslt_doc = etree.parse(xslt_path)
             self._xslt_transform = etree.XSLT(xslt_doc)
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_toan.py dòng 58: {e}')
             self._xslt_transform = None
 
     def _init_mathml_converter(self):
@@ -67,7 +68,8 @@ class BoXuLyToan:
             from latex2mathml import mathml2latex as _m2l
             self._mathml_to_latex_fn = _m2l
             return
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_toan.py dòng 70: {e}')
             pass
         # Fallback: tự parse đơn giản qua _mathml_simple_to_latex
         self._mathml_to_latex_fn = None
@@ -81,7 +83,8 @@ class BoXuLyToan:
                 capture_output=True, timeout=5,
             )
             self._co_pandoc = True
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_toan.py dòng 84: {e}')
             self._co_pandoc = False
         return self._co_pandoc
 
@@ -122,7 +125,8 @@ class BoXuLyToan:
 
             # Nếu XSLT trả LaTeX thẳng (custom XSLT)
             return mathml_str
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_toan.py dòng 125: {e}')
             return ""
 
     def _mathml_to_latex(self, mathml_str: str) -> str:
@@ -131,7 +135,8 @@ class BoXuLyToan:
         if self._mathml_to_latex_fn is not None:
             try:
                 return self._mathml_to_latex_fn(mathml_str)
-            except Exception:
+            except Exception as e:
+                print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_toan.py dòng 134: {e}')
                 pass
 
         # Fallback: parse MathML đơn giản bằng lxml
@@ -145,7 +150,8 @@ class BoXuLyToan:
             clean = re.sub(r'\s+xmlns:[a-z]+="[^"]*"', '', clean)
             root = etree.fromstring(clean.encode('utf-8'))
             return self._parse_mathml_node(root).strip()
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_toan.py dòng 148: {e}')
             return ""
 
     def _parse_mathml_node(self, node) -> str:
@@ -255,7 +261,8 @@ class BoXuLyToan:
                     os.unlink(tmp_path)
                 except OSError:
                     pass
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_toan.py dòng 258: {e}')
             pass
         return ""
 
@@ -266,7 +273,8 @@ class BoXuLyToan:
             parts = []
             self._process_omml_element(omath, parts)
             return ''.join(parts)
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_toan.py dòng 269: {e}')
             return ""
 
     def _process_omml_element(self, elem, parts: list):
@@ -501,7 +509,8 @@ class BoXuLyToan:
                 if tag == 't' and elem.text:
                     text_parts.append(elem.text)
             return ''.join(text_parts)
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_toan.py dòng 504: {e}')
             return ""
 
     def trich_xuat_omml(self, doan_van) -> list:
@@ -514,6 +523,7 @@ class BoXuLyToan:
                 latex = self.omml_element_to_latex(omath)
                 if text_goc.strip() or latex.strip():
                     cong_thuc.append((text_goc, latex if latex.strip() else text_goc))
-        except Exception:
+        except Exception as e:
+            print(f'[Cảnh báo] Lỗi im lặng ở xu_ly_toan.py dòng 517: {e}')
             pass
         return cong_thuc
